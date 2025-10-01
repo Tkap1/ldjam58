@@ -1,5 +1,3 @@
-#pragma warning(push)
-#pragma warning(disable: 4505)
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wbraced-scalar-init"
@@ -37,7 +35,11 @@ static void assert_e_entity_(int val)
 #define assert_e_entity(val)
 
 #endif
+func constexpr int get_max_entities();
+func constexpr int get_max_entities_of_type(e_entity type);
+func constexpr int get_first_index(e_entity type);
+func constexpr int get_last_index_plus_one(e_entity type);
+;
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
-#pragma warning(pop)

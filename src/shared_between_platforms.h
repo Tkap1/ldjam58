@@ -1,5 +1,5 @@
 
-#include "generated/generated_shared_between_platforms.h"
+#include "gen_meta/shared_between_platforms.h.funcs"
 
 func s_loaded_sound load_sound_from_file(char* path)
 {

@@ -378,7 +378,7 @@ struct s_entity_manager
 };
 
 
-#include "generated/generated_engine.cpp"
+#include "gen_meta/engine.cpp.funcs"
 #include "gen_meta/engine.h.globals"
 
 
@@ -436,3 +436,5 @@ global constexpr int c_last_index_plus_one[e_entity_count] = {
 	get_last_index_plus_one(e_entity_fct),
 	get_last_index_plus_one(e_entity_visual_effect),
 };
+
+func s_len_str format_text2(const char* text, ...);

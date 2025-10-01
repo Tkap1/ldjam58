@@ -1,6 +1,6 @@
 
 #if defined(__EMSCRIPTEN__)
-#include "generated/generated_leaderboard.cpp"
+// #include "generated/generated_leaderboard.cpp"
 #endif
 
 func void parse_leaderboard_json(s_json* json)

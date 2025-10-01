@@ -337,16 +337,6 @@ m_dll_export void do_game(s_platform_data* platform_data)
 
 	input();
 
-	{
-		game->soft_data.dash_timer.duration = c_dash_duration;
-		game->soft_data.lightning_bolt_timer.duration = 0;
-		game->soft_data.attack_timer.duration = 0;
-
-		game->soft_data.dash_timer.cooldown = get_dash_cooldown();
-		game->soft_data.lightning_bolt_timer.cooldown = get_lightning_bolt_cooldown();
-		game->soft_data.attack_timer.cooldown = get_attack_or_auto_attack_cooldown();
-	}
-
 	float game_speed = c_game_speed_arr[game->speed_index] * game->speed;
 	game->accumulator += delta64 * game_speed;
 	f64 clamped_accumulator = at_most(c_update_delay * 20, game->accumulator);
@@ -361,7 +351,6 @@ m_dll_export void do_game(s_platform_data* platform_data)
 
 func void input()
 {
-
 	game->char_events.count = 0;
 	game->key_events.count = 0;
 
@@ -437,10 +426,8 @@ func void input()
 					else if(key == SDLK_SPACE && event.key.repeat == 0) {
 					}
 					else if(scancode == SDL_SCANCODE_A) {
-						soft_data->dash_timer.want_to_use_timestamp = game->update_time;
 					}
 					else if(scancode == SDL_SCANCODE_S && event.key.repeat == 0) {
-						soft_data->attack_timer.want_to_use_timestamp = game->update_time;
 					}
 					else if((key == SDLK_ESCAPE && event.key.repeat == 0) || (key == SDLK_o && event.key.repeat == 0) || (key == SDLK_p && event.key.repeat == 0)) {
 						if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
@@ -486,15 +473,9 @@ func void input()
 			{
 				if(event.type == SDL_MOUSEBUTTONDOWN && event.button.button == 1) {
 					g_left_click = true;
-					if(!are_we_hovering_over_ui(g_mouse)) {
-						soft_data->attack_timer.want_to_use_timestamp = game->update_time;
-					}
 				}
 				if(event.type == SDL_MOUSEBUTTONDOWN && event.button.button == 3) {
 					g_right_click = true;
-					if(!are_we_hovering_over_ui(g_mouse)) {
-						soft_data->dash_timer.want_to_use_timestamp = game->update_time;
-					}
 				}
 				// int key = sdl_key_to_windows_key(event.button.button);
 				// b8 is_down = event.type == SDL_MOUSEBUTTONDOWN;
@@ -548,41 +529,6 @@ func void update()
 			entity_manager_reset(entity_arr, type_i);
 		}
 
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		create player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			s_entity player = make_entity();
-
-			s_v2 center = gxy(0.5f);
-			center.x += cosf(player.timer) * c_circle_radius * 0.5f;
-			center.y += sinf(player.timer) * c_circle_radius * 0.5f;
-			teleport_entity(&player, center);
-			player.stamina = c_max_stamina;
-
-			{
-				s_entity emitter = make_entity();
-				emitter.emitter_a = make_emitter_a();
-				emitter.emitter_a.pos = v3(player.pos, 0.0f);
-				emitter.emitter_a.radius = 4;
-				emitter.emitter_a.follow_emitter = true;
-				emitter.emitter_b = make_emitter_b();
-				emitter.emitter_b.spawn_type = e_emitter_spawn_type_circle_outline;
-				emitter.emitter_b.spawn_data.x = get_player_attack_range();
-				emitter.emitter_b.duration = -1;
-				emitter.emitter_b.particles_per_second = 100;
-				emitter.emitter_b.particle_count = 1;
-				player.range_emitter = add_emitter(emitter);
-			}
-
-			entity_manager_add(entity_arr, e_entity_player, player);
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		create player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		{
-			s_entity emitter = make_circle_particles();
-			add_emitter(emitter);
-		}
-
-		soft_data->spawn_timer += get_spawn_delay();
 		game->music_speed.target = 1;
 	}
 	if(game->do_soft_reset) {
@@ -615,289 +561,14 @@ func void update()
 		return;
 	}
 
-	if(!game->disable_auto_dash_when_no_cooldown && get_dash_cooldown() <= 0) {
-		soft_data->dash_timer.want_to_use_timestamp = game->update_time;
-	}
-
-
 	if(do_game) {
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		spawn start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			soft_data->spawn_timer += delta;
-			float spawn_delay = get_spawn_delay();
-			while(soft_data->spawn_timer >= spawn_delay) {
-				soft_data->spawn_timer -= spawn_delay;
-
-				s_list<e_enemy, e_enemy_count> possible_spawn_arr;
-				possible_spawn_arr.count = 0;
-				for_enum(type_i, e_enemy) {
-					b8 valid = type_i == 0;
-					if(type_i > 0) {
-						if(soft_data->enemy_type_kill_count_arr[type_i - 1] >= g_enemy_type_data[type_i].prev_enemy_required_kill_count) {
-							valid = true;
-						}
-					}
-					if(type_i == e_enemy_boss && soft_data->boss_spawned) {
-						valid = false;
-					}
-					if(valid) {
-						possible_spawn_arr.add(type_i);
-					}
-				}
-
-				s_list<u32, e_enemy_count> weight_arr;
-				weight_arr.count = 0;
-				foreach_val(possible_i, possible, possible_spawn_arr) {
-					weight_arr.add(g_enemy_type_data[possible].spawn_weight);
-				}
-
-				int chosen_index = pick_rand_from_weight_arr(&weight_arr, &game->rng);
-				e_enemy chosen_enemy_type = possible_spawn_arr[chosen_index];
-
-				int index = spawn_enemy(chosen_enemy_type);
-				if(chosen_enemy_type == e_enemy_boss) {
-					soft_data->boss_spawned = true;
-					assert(index >= 0);
-					soft_data->boss_ref.index = index;
-					soft_data->boss_ref.id = entity_arr->data[index].id;
-				}
-
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		spawn end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update enemies start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		for(int i = c_first_index[e_entity_enemy]; i < c_last_index_plus_one[e_entity_enemy]; i += 1) {
-			if(!entity_arr->active[i]) { continue; }
-			s_entity* enemy = &entity_arr->data[i];
-			s_enemy_type_data enemy_type_data = g_enemy_type_data[enemy->enemy_type];
-			s_v2 dir = v2_dir_from_to(enemy->pos, gxy(0.5f));
-			if(enemy->knockback.valid) {
-				enemy->pos += dir * -1 * enemy->knockback.value * delta;
-				enemy->knockback.value *= 0.9f;
-				if(enemy->knockback.value < 1.0f) {
-					enemy->knockback = zero;
-				}
-			}
-			else {
-				float speed = 13 * enemy_type_data.speed_multi;
-				float dist_before_moving = v2_distance(enemy->pos, gxy(0.5f));
-				{
-					float limit = c_circle_radius * 1.0f;
-					float t = smoothstep(limit, limit + 50, dist_before_moving);
-					speed += t * 300;
-				}
-				switch(enemy_type_data.movement_type) {
-					xcase e_enemy_movement_zig_zag: {
-						dir = v2_rotated(dir, sinf(game->update_time - enemy->spawn_timestamp) * c_pi * 0.4f);
-					}
-					xcase e_enemy_movement_spiral: {
-						float t = smoothstep(0.0f, c_circle_radius * 2, dist_before_moving);
-						dir = v2_rotated(dir, c_pi * 0.45f * powf(t, 0.25f));
-					}
-					break; default: {}
-				}
-				enemy->pos += dir * speed * delta;
-				float dist = v2_distance(enemy->pos, gxy(0.5f));
-				if(dist <= 10) {
-					if(enemy->enemy_type == e_enemy_boss) {
-						lose_lives(99999);
-					}
-					else {
-						lose_lives(1);
-					}
-					add_emitter(make_lose_lives_particles());
-					entity_manager_remove(entity_arr, e_entity_enemy, i);
-				}
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update enemies end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update dying enemies start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		for(int i = c_first_index[e_entity_dying_enemy]; i < c_last_index_plus_one[e_entity_dying_enemy]; i += 1) {
-			if(!entity_arr->active[i]) { continue; }
-			s_entity* enemy = &entity_arr->data[i];
-			s_v2 dir = v2_dir_from_to(enemy->pos, gxy(0.5f));
-			enemy->pos += dir * -1 * enemy->knockback.value * delta;
-			enemy->knockback.value *= 0.9f;
-			if(enemy->knockback.value < 1.0f && enemy->remove_soon_timestamp <= 0) {
-				enemy->remove_soon_timestamp = game->update_time;
-			}
-			if(enemy->remove_soon_timestamp > 0) {
-				s_time_data time_data = get_time_data(game->update_time, enemy->remove_soon_timestamp, 0.25f);
-				if(time_data.percent >= 1) {
-					entity_manager_remove(entity_arr, e_entity_dying_enemy, i);
-					play_sound(e_sound_enemy_death2, {.speed = get_rand_sound_speed(1.1f, &game->rng)});
-					s_entity emitter = make_enemy_death_particles(enemy->pos);
-					add_emitter(emitter);
-				}
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update dying enemies end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			s_entity* player = &soft_data->entity_arr.data[0];
-			s_v2 center = gxy(0.5f);
-			player->pos.x = cosf(player->timer) * c_circle_radius * 0.5f;
-			player->pos.y = sinf(player->timer) * c_circle_radius * 0.5f;
-			player->pos += center;
-			if(timer_can_and_want_activate(soft_data->dash_timer, game->update_time, 0.1f)) {
-				play_sound(e_sound_dash, zero);
-				timer_activate(&soft_data->dash_timer, game->update_time);
-				if(completed_attack_tutorial()) {
-					game->num_times_we_dashed += 1;
-					if(game->num_times_we_dashed >= 2 && game->completed_dash_tutorial_timestamp <= 0) {
-						game->completed_dash_tutorial_timestamp = game->render_time;
-					}
-				}
-			}
-
-			float dash_speed = 1.0f;
-			{
-				b8 active = false;
-				s_time_data time_data = timer_get_time_data(soft_data->dash_timer, game->update_time, &active);
-				if(active) {
-					dash_speed = 1.0f + time_data.inv_percent * 5;
-				}
-			}
-			player->timer += delta * get_player_speed() * dash_speed;
-			player->stamina = at_most(c_max_stamina, player->stamina + c_stamina_regen * delta);
-
-
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		try to hit start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			s_list<int, get_max_entities_of_type(e_entity_enemy)> enemy_index_arr;
-			enemy_index_arr.count = 0;
-			for(int i = c_first_index[e_entity_enemy]; i < c_last_index_plus_one[e_entity_enemy]; i += 1) {
-				if(!entity_arr->active[i]) { continue; }
-				enemy_index_arr.add(i);
-			}
-			radix_sort_32(enemy_index_arr.data, enemy_index_arr.count, get_radix_from_enemy_index, &game->update_frame_arena);
-
-			int num_possible_hits = get_hits_per_attack();
-			b8 are_we_dashing = timer_is_active(game->soft_data.dash_timer, game->update_time);
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		lightning bolt start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			{
-				b8 can_lightning_bolt = get_upgrade_level(e_upgrade_lightning_bolt) > 0 &&
-					timer_can_activate(soft_data->lightning_bolt_timer, game->update_time);
-				int num_enemies_hit = 0;
-				float lightning_bolt_range = get_player_attack_range() * 2;
-				foreach_val(enemy_index_i, enemy_index, enemy_index_arr) {
-					int i = enemy_index;
-					if(num_enemies_hit >= num_possible_hits) { break; }
-					if(!entity_arr->active[i]) { continue; }
-					s_entity* enemy = &entity_arr->data[i];
-					s_v2 enemy_size = get_enemy_size(enemy->enemy_type);
-					float dist = v2_distance(enemy->pos, player->pos);
-					if(dist <= lightning_bolt_range + enemy_size.y * 0.5f && can_lightning_bolt) {
-						timer_activate(&soft_data->lightning_bolt_timer, game->update_time);
-
-						if(num_enemies_hit == 0) {
-							s_audio_fade fade = make_simple_fade(0.8f, 1.0f);
-							play_sound(e_sound_lightning_bolt, {.speed = get_rand_sound_speed(1.1f, &game->rng), .fade = maybe(fade)});
-						}
-
-						{
-							s_entity effect = make_entity();
-							effect.pos = enemy->pos;
-							effect.spawn_timestamp = game->render_time;
-							effect.effect_size = enemy_size;
-							entity_manager_add_if_not_full(entity_arr, e_entity_visual_effect, effect);
-						}
-
-						{
-							float knockback_multi = 0.1f;
-							float knockback_to_add = get_player_knockback() * knockback_multi * (1.0f - g_enemy_type_data[enemy->enemy_type].knockback_resistance);
-							float damage = get_player_damage() * 0.5f;
-							hit_enemy(i, damage, knockback_to_add);
-						}
-						num_enemies_hit += 1;
-					}
-				}
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		lightning bolt end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		punch start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			{
-				if(do_we_have_auto_attack()) {
-					soft_data->attack_timer.want_to_use_timestamp = game->update_time;
-				}
-				b8 should_attack = timer_can_and_want_activate(soft_data->attack_timer, game->update_time, 0.1f) &&
-					player->stamina >= c_attack_stamina_cost;
-				int num_enemies_hit = 0;
-				float punch_range = get_player_attack_range();
-				foreach_val(enemy_index_i, enemy_index, enemy_index_arr) {
-					int i = enemy_index;
-					if(num_enemies_hit >= num_possible_hits) { break; }
-					if(!entity_arr->active[i]) { continue; }
-					s_entity* enemy = &entity_arr->data[i];
-					s_v2 enemy_size = get_enemy_size(enemy->enemy_type);
-					float dist = v2_distance(enemy->pos, player->pos);
-					if(dist <= punch_range + enemy_size.y * 0.5f && should_attack) {
-
-						{
-							float knockback_to_add = get_player_knockback() * (1.0f - g_enemy_type_data[enemy->enemy_type].knockback_resistance);
-							float damage = get_player_damage();
-							hit_enemy(i, damage, knockback_to_add);
-						}
-
-						if(num_enemies_hit == 0) {
-							play_sound(e_sound_punch, {.speed = get_rand_sound_speed(1.1f, &game->rng)});
-							if(do_we_have_auto_attack()) {
-								timer_activate(&soft_data->attack_timer, game->update_time);
-							}
-							player->attacked_enemy_pos = enemy->pos;
-							if(are_we_dashing && !do_we_have_auto_attack()) {
-								soft_data->frames_to_freeze += 10;
-							}
-						}
-
-						{
-							s_entity emitter = make_enemy_hit_particles(enemy->pos);
-							add_emitter(emitter);
-						}
-
-						num_enemies_hit += 1;
-						game->num_times_we_attacked_an_enemy += 1;
-						player->did_attack_enemy_timestamp = game->render_time;
-					}
-				}
-				soft_data->attack_timer.want_to_use_timestamp = 0;
-				if(should_attack && !do_we_have_auto_attack()) {
-					if(num_enemies_hit <= 0) {
-						player->stamina -= c_attack_stamina_cost * 2;
-						play_sound(e_sound_miss_attack, zero);
-					}
-					else {
-						player->stamina -= c_attack_stamina_cost;
-					}
-				}
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		punch end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		try to hit end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 		game->update_time += (float)c_update_delay;
 		hard_data->update_count += 1;
 		soft_data->update_count += 1;
 	}
 
-
-	if(soft_data->frame_data.lives_to_lose > 0) {
-		game->soft_data.lives_lost += soft_data->frame_data.lives_to_lose;
-		game->soft_data.life_change_timestamp = game->render_time;
-		int curr_lives = get_max_lives() - game->soft_data.lives_lost;
-		if(curr_lives <= 0) {
-			add_state(&game->hard_data.state1, e_game_state1_defeat);
-		}
-	}
-
-	if(soft_data->boss_defeated_timestamp > 0 && game->update_time - soft_data->boss_defeated_timestamp > 4) {
-		soft_data->boss_defeated_timestamp = 0;
+	if(0) {
+		// soft_data->boss_defeated_timestamp = 0;
 		if(game->leaderboard_nice_name.count <= 0 && c_on_web) {
 			add_temporary_state_transition(&game->state0, e_game_state0_input_name, game->render_time, c_transition_time);
 		}
@@ -996,8 +667,6 @@ func void render(float interp_dt, float delta)
 			game->speed = 0;
 			game->music_speed.target = 1;
 
-			draw_background(ortho, true);
-
 			if(do_button(S("Play"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
 				add_state_transition(&game->state0, e_game_state0_play, game->render_time, c_transition_time);
 				game->do_hard_reset = true;
@@ -1038,7 +707,6 @@ func void render(float interp_dt, float delta)
 			game->speed = 0;
 			game->music_speed.target = 1;
 
-			draw_background(ortho, true);
 
 			if(do_button(S("Resume"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
 				pop_state_transition(&game->state0, game->render_time, c_transition_time);
@@ -1073,7 +741,6 @@ func void render(float interp_dt, float delta)
 		case e_game_state0_leaderboard: {
 			game->speed = 0;
 			game->music_speed.target = 1;
-			draw_background(ortho, true);
 			do_leaderboard();
 
 			{
@@ -1089,7 +756,6 @@ func void render(float interp_dt, float delta)
 		case e_game_state0_win_leaderboard: {
 			game->speed = 0;
 			game->music_speed.target = 1;
-			draw_background(ortho, true);
 			do_leaderboard();
 
 			{
@@ -1100,16 +766,6 @@ func void render(float interp_dt, float delta)
 				draw_text(S("Press R to restart..."), c_world_center * v2(1.0f, 0.4f), sin_range(48, 60, game->render_time * 8.0f), make_color(0.66f), true, &game->font, zero);
 			}
 
-			for(int i = 0; i < e_enemy_count - 1; i += 1) {
-				s_time_format format = update_time_to_time_format(soft_data->progression_timestamp_arr[i]);
-				s_str_builder<128> builder;
-				builder.count = 0;
-				s_len_str text = format_text("Wave %2i: %02i:%02i.%03i", i + 1, format.minutes, format.seconds, format.milliseconds);
-				s_v2 text_pos = wxy(0.79f, 0.02f);
-				constexpr float font_size = 32;
-				text_pos.y += (font_size + 4) * i;
-				draw_text(text, text_pos, font_size, make_color(0.8f), false, &game->font, zero);
-			}
 
 			b8 want_to_reset = is_key_pressed(SDLK_r, true);
 			if(
@@ -1135,7 +791,6 @@ func void render(float interp_dt, float delta)
 		case e_game_state0_options: {
 			game->speed = 0;
 			game->music_speed.target = 1;
-			draw_background(ortho, true);
 
 			s_v2 pos = wxy(0.5f, 0.12f);
 			s_v2 button_size = v2(600, 48);
@@ -1177,12 +832,6 @@ func void render(float interp_dt, float delta)
 			}
 
 			{
-				s_len_str text = format_text("Pause when hovering over upgrades: %s", game->disable_hover_over_upgrade_to_pause ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->disable_hover_over_upgrade_to_pause);
-				pos.y += 80;
-			}
-
-			{
 				s_len_str text = format_text("Auto dash when 0 cooldown: %s", game->disable_auto_dash_when_no_cooldown ? "Off" : "On");
 				do_bool_button_ex(text, pos, button_size, true, &game->disable_auto_dash_when_no_cooldown);
 				pos.y += 80;
@@ -1206,7 +855,7 @@ func void render(float interp_dt, float delta)
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		play start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		case e_game_state0_play: {
 			game->speed = wanted_speed;
-			game->music_speed.target = range_lerp((float)get_progression(), 0, e_enemy_count - 1, 1, 1.5f);
+			game->music_speed.target = 1;
 
 			handle_state(&hard_data->state1, game->render_time);
 
@@ -1228,7 +877,6 @@ func void render(float interp_dt, float delta)
 		case e_game_state0_input_name: {
 			game->speed = 0;
 			game->music_speed.target = 1;
-			draw_background(ortho, true);
 			s_input_name_state* state = &game->input_name_state;
 			float font_size = 36;
 			s_v2 pos = c_world_size * v2(0.5f, 0.4f);
@@ -1314,132 +962,7 @@ func void render(float interp_dt, float delta)
 
 		s_entity* player = &entity_arr->data[0];
 
-		draw_background(ortho, false);
-
-		{
-			s_v2 size = v2(32);
-			draw_atlas(gxy(0.5f) + size * v2(-0.5f, -0.5f), v2(32), v2i(78, 16), make_color(1));
-			draw_atlas(gxy(0.5f) + size * v2(0.5f, -0.5f), v2(32), v2i(79, 16), make_color(1));
-			draw_atlas(gxy(0.5f) + size * v2(-0.5f, 0.5f), v2(32), v2i(78, 17), make_color(1));
-			draw_atlas(gxy(0.5f) + size * v2(0.5f, 0.5f), v2(32), v2i(79, 17), make_color(1));
-		}
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw enemies start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			for(int i = c_first_index[e_entity_enemy]; i < c_last_index_plus_one[e_entity_enemy]; i += 1) {
-				if(!entity_arr->active[i]) { continue; }
-				s_entity* enemy = &entity_arr->data[i];
-				s_v2 enemy_pos = lerp_v2(enemy->prev_pos, enemy->pos, interp_dt);
-				s_v4 color = make_color(1);
-				s_time_data time_data = get_time_data(update_time_to_render_time(game->update_time, interp_dt), enemy->hit_timestamp, 0.33f);
-				s_draw_data draw_data = zero;
-				draw_data.mix_color = make_color(1);
-				if(enemy->hit_timestamp > 0 && time_data.percent <= 1) {
-					draw_data.mix_weight = smoothstep(1.0f, 0.7f, time_data.percent);
-				}
-				s_v2 dir = v2_dir_from_to(enemy_pos, gxy(0.5f));
-				if(dir.x > 0) {
-					draw_data.flip_x = true;
-				}
-				s_v2 size = get_enemy_size(enemy->enemy_type);
-				float rotation = 0;
-				{
-					float speed_multi = g_enemy_type_data[enemy->enemy_type].speed_multi;
-					float passed = update_time_to_render_time(game->update_time, interp_dt) - enemy->spawn_timestamp;
-					float s0 = sinf(passed * 8 * speed_multi);
-					float s1 = sinf(passed * 4 * speed_multi);
-					s1 = sign_as_float(s1) * powf(fabsf(s1), 0.75f);
-					enemy_pos.y += s0 * 4;
-					rotation = s1 * -0.35f;
-				}
-				draw_atlas_ex(enemy_pos, size, get_enemy_atlas_index(enemy->enemy_type), color, rotation, draw_data);
-				s_v2 light_offset = v2(-8, 0);
-				if(!draw_data.flip_x) {
-					light_offset.x *= -1;
-				}
-				add_multiplicative_light(enemy_pos + light_offset, size.x * 2, make_color(0.5f), 0.0f);
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw enemies end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw dying enemies start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			for(int i = c_first_index[e_entity_dying_enemy]; i < c_last_index_plus_one[e_entity_dying_enemy]; i += 1) {
-				if(!entity_arr->active[i]) { continue; }
-				s_entity* enemy = &entity_arr->data[i];
-				s_v2 enemy_pos = lerp_v2(enemy->prev_pos, enemy->pos, interp_dt);
-				// s_v4 color = enemy->highlight.value;
-				s_v4 color = make_color(1);
-				s_time_data time_data = get_time_data(update_time_to_render_time(game->update_time, interp_dt), enemy->hit_timestamp, 0.33f);
-				s_draw_data draw_data = zero;
-				draw_data.mix_color = make_color(1);
-				s_v2 dir = v2_dir_from_to(enemy_pos, gxy(0.5f));
-				if(dir.x > 0) {
-					draw_data.flip_x = true;
-				}
-				if(enemy->hit_timestamp > 0 && time_data.percent <= 1) {
-					draw_data.mix_weight = smoothstep(1.0f, 0.7f, time_data.percent);
-				}
-				draw_atlas_ex(enemy_pos, get_enemy_size(enemy->enemy_type), get_enemy_atlas_index(enemy->enemy_type), color, 0, draw_data);
-				// add_additive_light(enemy_pos, 64, make_color(1), 0.0f);
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw dying enemies end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 		s_v2 player_pos = lerp_v2(player->prev_pos, player->pos, interp_dt);
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			draw_atlas(player_pos, c_player_size_v, v2i(123, 42), make_color(1));
-			if(player->range_emitter >= 0) {
-				entity_arr->data[player->range_emitter].emitter_a.pos = v3(player_pos, 0.0f);
-				entity_arr->data[player->range_emitter].emitter_b.spawn_data.x = get_player_attack_range();
-			}
-
-			// @Note(tkap, 31/07/2025): Fist
-			{
-				s_v2 offset_arr[] = {
-					v2(-c_player_size_v.x, 0.0f),
-					v2(c_player_size_v.x, 0.0f),
-				};
-				for(int i = 0; i < 2; i += 1) {
-					s_v2 pos = player_pos + offset_arr[i];
-					pos.y += sinf(player->fist_wobble_time * 4) * c_player_size_v.y * 0.1f;
-					s_v2 size = c_fist_size_v;
-					s_v4 color = make_color(1);
-					float target_rotation = i == 0 ? 0.33f : -0.33f;
-
-					if(player->did_attack_enemy_timestamp > 0) {
-						target_rotation += v2_angle(player->attacked_enemy_pos - player_pos) + c_pi * 0.5f;
-						float passed = game->render_time - player->did_attack_enemy_timestamp;
-						s_animator animator = zero;
-						s_v2 temp_pos = zero;
-						s_v2 temp_size = size;
-						animate_v2(&animator, pos, player->attacked_enemy_pos, 0.1f, &temp_pos, e_ease_linear, passed);
-						animate_v2(&animator, size, size * 2, 0.1f, &temp_size, e_ease_linear, passed);
-						animate_color(&animator, make_color(1), make_color(1, 0, 0), 0.1f, &color, e_ease_linear, passed);
-						animator_end_keyframe(&animator, 0.0f);
-						animate_v2(&animator, player->attacked_enemy_pos, pos, 0.5f, &temp_pos, e_ease_out_elastic, passed);
-						animate_v2(&animator, size * 2, size, 0.5f, &temp_size, e_ease_out_elastic, passed);
-						animate_color(&animator, make_color(1, 0, 0), make_color(1), 0.5f, &color, e_ease_linear, passed);
-						float time = 0;
-						animate_float(&animator, 0.0f, 0.5f, 0.5f, &time, e_ease_linear, passed);
-						if(time >= 0.5f) {
-							player->did_attack_enemy_timestamp = 0.0f;
-						}
-						pos = temp_pos;
-						size = temp_size;
-					}
-					else {
-						player->fist_wobble_time += delta;
-					}
-
-					b8 flip_x = i == 1;
-					player->fist_rotation[i] = lerp_angle(player->fist_rotation[i], target_rotation, at_most(1.0f, delta * 10));
-					draw_atlas_ex(pos, size, v2i(122, 42), make_color(1), player->fist_rotation[i], {.flip_x = flip_x});
-				}
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 		{
 			s_render_flush_data data = make_render_flush_data(zero, zero);
@@ -1448,37 +971,6 @@ func void render(float interp_dt, float delta)
 			data.depth_mode = e_depth_mode_no_read_no_write;
 			render_flush(data, true);
 		}
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw visual effects start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		for(int i = c_first_index[e_entity_visual_effect]; i < c_last_index_plus_one[e_entity_visual_effect]; i += 1) {
-				if(!entity_arr->active[i]) { continue; }
-				s_entity* effect = &entity_arr->data[i];
-				s_time_data time_data = get_time_data(game->render_time, effect->spawn_timestamp, 1.0f);
-
-				{
-					s_v2 size = effect->effect_size * 2;
-					float bottom = effect->pos.y + effect->effect_size.y * 0.5f;
-					s_v2 pos = effect->pos;
-					pos.y = bottom - size.y * 0.5f;
-					s_instance_data data = zero;
-					data.model = m4_translate(v3(pos, 0));
-					data.model = m4_multiply(data.model, m4_scale(v3(size, 1)));
-					float alpha = powf(time_data.inv_percent, 0.5f);
-					data.color = make_color(1, alpha);
-					add_to_render_group(data, e_shader_lightning, e_texture_white, e_mesh_quad);
-
-					{
-						s_v4 color = hex_to_rgb(0x0076FF);
-						color = multiply_rgb(color, alpha * 0.75f);
-						add_additive_light(pos, effect->effect_size.y * 2, color, 0.0f);
-					}
-				}
-
-				if(time_data.percent >= 1) {
-					entity_manager_remove(entity_arr, e_entity_visual_effect, i);
-				}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw visual effects end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 		update_particles(delta, true);
 
@@ -1490,179 +982,6 @@ func void render(float interp_dt, float delta)
 			render_flush(data, true);
 		}
 
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		multiplicative lights start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		if(!game->disable_lights) {
-
-			clear_framebuffer_color(game->light_fbo.id, make_color(0.5f));
-
-			draw_light(player_pos, 256, make_color(0.75f), 0.0f);
-			foreach_val(light_i, light, game->multiplicative_light_arr) {
-				draw_light(light.pos, light.radius, light.color, light.smoothness);
-			}
-			game->multiplicative_light_arr.count = 0;
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_additive;
-				data.depth_mode = e_depth_mode_no_read_no_write;
-				data.fbo = game->light_fbo;
-				render_flush(data, true);
-			}
-
-			draw_texture_screen(c_world_center, c_world_size, make_color(1), e_texture_light, e_shader_flat, v2(0, 1), v2(1, 0), zero);
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_multiply;
-				data.depth_mode = e_depth_mode_no_read_no_write;
-				render_flush(data, true);
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		multiplicative lights end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		additive lights start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		if(!game->disable_lights) {
-
-			clear_framebuffer_color(game->light_fbo.id, make_color(0.0f));
-
-			draw_light(gxy(0.5f), 300, make_color(0.5f, 0.33f, 0.0f), 0.0f);
-			draw_light(player_pos + v2(0, 8), 24, make_color(0.0f, 0.15f, 0.0f), 0.0f);
-
-			foreach_val(light_i, light, game->additive_light_arr) {
-				draw_light(light.pos, light.radius, light.color, light.smoothness);
-			}
-			game->additive_light_arr.count = 0;
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_additive;
-				data.depth_mode = e_depth_mode_no_read_no_write;
-				data.fbo = game->light_fbo;
-				render_flush(data, true);
-			}
-
-			draw_texture_screen(c_world_center, c_world_size, make_color(1), e_texture_light, e_shader_flat, v2(0, 1), v2(1, 0), zero);
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_additive;
-				data.depth_mode = e_depth_mode_no_read_no_write;
-				render_flush(data, true);
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		additive lights end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw fct start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		for(int i = c_first_index[e_entity_fct]; i < c_last_index_plus_one[e_entity_fct]; i += 1) {
-			if(!entity_arr->active[i]) { continue; }
-			s_entity* fct = &entity_arr->data[i];
-			if(fct->fct_type == 0) {
-				s_v2 vel = v2(0, -400) + fct->vel;
-				fct->vel.y += 4;
-				fct->pos += vel * delta;
-			}
-			s_time_data time_data = get_time_data(game->render_time, fct->spawn_timestamp, fct->duration);
-			{
-				s_len_str str = builder_to_str(&fct->builder);
-				s_v4 color = make_color(1);
-				color.a = powf(time_data.inv_percent, 0.5f);
-				s_v2 pos = fct->pos;
-				if(fct->shake) {
-					pos += rand_v2_11(&game->rng) * 2;
-				}
-				draw_text(str, pos, fct->font_size, color, true, &game->font, zero);
-			}
-			if(time_data.percent >= 1) {
-				entity_manager_remove(entity_arr, e_entity_fct, i);
-			}
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw fct end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
-			data.projection = ortho;
-			data.blend_mode = e_blend_mode_normal;
-			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true);
-		}
-
-		{
-			b8 do_flush = false;
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw attack cooldown start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			if(do_we_have_auto_attack()) {
-				b8 is_on_cooldown = false;
-				float time = update_time_to_render_time(game->update_time, interp_dt);
-				s_time_data time_data = timer_get_cooldown_time_data(soft_data->attack_timer, time, &is_on_cooldown);
-				if(is_on_cooldown) {
-					do_flush = true;
-					s_v2 size = v2(64, 10);
-					s_v2 pos = player_pos;
-					pos.y += c_player_size_v.y * 0.5f;
-					pos.y += size.y * 0.8f;
-					s_v2 over_pos = pos;
-					s_v2 over_size = size;
-					over_size.x *= time_data.percent;
-					over_pos.x -= size.x * 0.5f;
-					over_pos.x += over_size.x * 0.5f;
-					s_v4 color = hex_to_rgb(0x14A12C);
-					color.a = ease_linear_advanced(time_data.percent, 0.9f, 1.0f, 1, 0.0f);
-					draw_rect(pos, size, color);
-					draw_rect(over_pos, over_size, multiply_rgb(color, 2));
-				}
-			}
-			else if(player->stamina < c_max_stamina) {
-				do_flush = true;
-				s_v2 size = v2(64, 10);
-				s_v2 pos = player_pos;
-				pos.y += c_player_size_v.y * 0.5f;
-				pos.y += size.y * 0.8f;
-				float stamina_percent = player->stamina / c_max_stamina;
-				s_v2 over_pos = pos;
-				s_v2 over_size = size;
-				over_size.x *= stamina_percent;
-				over_pos.x -= size.x * 0.5f;
-				over_pos.x += over_size.x * 0.5f;
-				s_v4 color = hex_to_rgb(0x14A12C);
-				color.a = ease_linear_advanced(stamina_percent, 0.9f, 1.0f, 1, 0.0f);
-				draw_rect(pos, size, color);
-				draw_rect(over_pos, over_size, multiply_rgb(color, 2));
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw attack cooldown end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw dash cooldown start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			{
-				b8 is_on_cooldown = false;
-				float time = update_time_to_render_time(game->update_time, interp_dt);
-				s_time_data time_data = timer_get_cooldown_time_data(soft_data->dash_timer, time, &is_on_cooldown);
-				if(is_on_cooldown && time_data.percent >= 0) {
-					do_flush = true;
-					s_v2 size = v2(64, 10);
-					s_v2 pos = player_pos;
-					pos.y += c_player_size_v.y * 0.5f;
-					pos.y += size.y * 0.8f;
-					pos.y += 16;
-					s_v2 over_pos = pos;
-					s_v2 over_size = size;
-					over_size.x *= time_data.percent;
-					over_pos.x -= size.x * 0.5f;
-					over_pos.x += over_size.x * 0.5f;
-					s_v4 color = hex_to_rgb(0x106BA8);
-					color.a = ease_linear_advanced(time_data.percent, 0.9f, 1.0f, 1, 0.0f);
-					draw_rect(pos, size, color);
-					draw_rect(over_pos, over_size, multiply_rgb(color, 2));
-				}
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw dash cooldown end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-			if(do_flush) {
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_no_write;
-				render_flush(data, true);
-			}
-		}
-
 		if(do_game_ui) {
 
 			s_rect rect = {
@@ -1672,233 +991,11 @@ func void render(float interp_dt, float delta)
 			s_container container = make_down_center_x_container(rect, button_size, 10);
 
 			{
-				draw_rect_topleft(v2(rect.pos.x, 0.0f), v2(rect.size.x, c_world_size.y), make_color(0.05f));
-				{
-					s_render_flush_data data = make_render_flush_data(zero, zero);
-					data.projection = ortho;
-					data.blend_mode = e_blend_mode_normal;
-					data.depth_mode = e_depth_mode_no_read_no_write;
-					render_flush(data, true);
-				}
-			}
-
-			if(soft_data->queued_upgrade_arr.count > 0 && is_upgrade_maxed(soft_data->queued_upgrade_arr[0].id)) {
-				soft_data->queued_upgrade_arr.remove_and_shift(0);
-			}
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		upgrade buttons start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			for_enum(upgrade_i, e_upgrade) {
-				s_upgrade_data data = g_upgrade_data[upgrade_i];
-				int how_many_to_buy = 1;
-				if(is_key_down(c_left_ctrl)) {
-					how_many_to_buy *= 5;
-				}
-				if(is_key_down(c_left_shift)) {
-					how_many_to_buy *= 10;
-				}
-				if(data.max_upgrades > 0) {
-					int curr_level = get_upgrade_level(upgrade_i);
-					int how_many_to_reach_max = data.max_upgrades - curr_level;
-					how_many_to_buy = at_most(how_many_to_reach_max, how_many_to_buy);
-				}
-				s_v2 pos = container_get_pos_and_advance(&container);
-				int cost_all = 0;
-				int how_many_can_afford = 0;
-				int fake_gold = soft_data->gold;
-				int gold_to_spend = 0;
-				for(int i = 0; i < how_many_to_buy; i += 1) {
-					int cost = data.cost + (get_upgrade_level(upgrade_i) + i) * data.extra_cost_per_level;
-					cost_all += cost;
-					if(can_afford(fake_gold, cost)) {
-						fake_gold -= cost;
-						gold_to_spend += cost;
-						how_many_can_afford += 1;
-					}
-				}
-				s_len_str str = zero;
-				s_button_data optional = zero;
-				if(how_many_can_afford == 0) {
-					optional.disabled = true;
-				}
-				if(is_upgrade_maxed(upgrade_i)) {
-					str = format_text("%.*s (MAX)", expand_str(data.name));
-					optional.disabled = true;
-				}
-				else {
-					str = format_text("%.*s (%i)", expand_str(data.name), cost_all);
-				}
-				optional.tooltip = get_upgrade_description(upgrade_i);
-				optional.mute_click_sound = true;
-				optional.font_size = 28;
-				if(is_upgrade_queued(upgrade_i)) {
-					optional.button_color = make_color(0.25f, 0.5f, 0.25f);
-				}
-				int key = (int)SDLK_1 + upgrade_i;
-				s_queued_upgrade* queued = null;
-				if(soft_data->queued_upgrade_arr.count > 0 && soft_data->queued_upgrade_arr[0].id == upgrade_i && how_many_can_afford > 0) {
-					queued = &soft_data->queued_upgrade_arr[0];
-				}
-				e_button_result button_result = do_button_ex(str, pos, button_size, false, optional);
-				if(button_result == e_button_result_left_click || (!optional.disabled && is_key_pressed(key, true)) || queued != null) {
-					add_gold(-gold_to_spend);
-					apply_upgrade(upgrade_i, how_many_can_afford);
-					play_sound(e_sound_upgrade, {.speed = get_rand_sound_speed(1.1f, &game->rng)});
-					game->purchased_at_least_one_upgrade = true;
-					if(queued != null) {
-						queued->count -= how_many_can_afford;
-						assert(queued->count >= 0);
-						if(queued->count <= 0) {
-							soft_data->queued_upgrade_arr.remove_and_shift(0);
-						}
-					}
-				}
-				else if(button_result == e_button_result_right_click && !soft_data->queued_upgrade_arr.is_full()) {
-					s_queued_upgrade new_queued = zero;
-					new_queued.id = upgrade_i;
-					new_queued.count = how_many_to_buy;
-					game->soft_data.queued_upgrade_arr.add(new_queued);
-				}
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		upgrade buttons end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-			{
-				b8 should_do_upgrade_tutorial = false;
-				for_enum(upgrade_i, e_upgrade) {
-					s_upgrade_data data = g_upgrade_data[upgrade_i];
-					if(!game->purchased_at_least_one_upgrade && can_afford(soft_data->gold, data.cost)) {
-						should_do_upgrade_tutorial = true;
-					}
-				}
-
-				if(should_do_upgrade_tutorial) {
-					s_v4 color = hsv_to_rgb(game->render_time * 360, 1, 1);
-					draw_text(S("Buy upgrades! ->"), wxy(0.62f, 0.28f), sin_range(32, 40, game->render_time * 8), color, true, &game->font, zero);
-					draw_text(S("Hold CTRL to buy 5x\nHold Shift to buy 10x"), wxy(0.62f, 0.36f), 32, make_color(0.8f), true, &game->font, zero);
-				}
-
-				if(!completed_attack_tutorial()) {
-					s_len_str str = format_text("Press %sleft click$. or ", c_key_color_str);
-					float font_size = sin_range(32, 40, game->render_time * 8);
-					s_v2 pos = draw_text(str, gxy(0.42f, 0.8f), font_size, make_color(1), true, &game->font, zero);
-					draw_keycap(scancode_to_char(SDL_SCANCODE_S), pos, v2(font_size), 1.0f);
-					pos.x += font_size;
-					draw_text(S(" to attack"), pos, font_size, make_color(1), false, &game->font, zero);
-					draw_text(S("(Attacks cost stamina. Missing an attack consumes double stamina)"), gxy(0.5f, 0.85f), 32, make_color(0.8f), true, &game->font, zero);
-				}
-				else if(game->num_times_we_dashed < 2) {
-					s_len_str str = format_text("Press %sright click$. or ", c_key_color_str);
-					float font_size = sin_range(32, 40, game->render_time * 8);
-					s_v2 pos = draw_text(str, gxy(0.44f, 0.8f), font_size, make_color(1), true, &game->font, zero);
-					draw_keycap(scancode_to_char(SDL_SCANCODE_A), pos, v2(font_size), 1.0f);
-					pos.x += font_size;
-					draw_text(S(" to dash"), pos, font_size, make_color(1), false, &game->font, zero);
-					draw_text(S("(Attacks do triple damage while dashing)"), gxy(0.5f, 0.85f), 32, make_color(0.8f), true, &game->font, zero);
-				}
-				else if(game->render_time - game->completed_dash_tutorial_timestamp < 5) {
-					s_len_str str = format_text("Press %sCTRL$. + ", c_key_color_str);
-					float font_size = sin_range(32, 40, game->render_time * 8);
-					s_v4 color = make_color(1);
-					float percent = at_most(5.0f, game->render_time - game->completed_dash_tutorial_timestamp) / 5.0f;
-					color.a = powf(1.0f - percent, 0.25f);
-					s_v2 pos = draw_text(str, gxy(0.44f, 0.8f), font_size, color, true, &game->font, zero);
-					draw_keycap('R', pos, v2(font_size), color.a);
-					pos.x += font_size;
-					draw_text(S(" to restart"), pos, font_size, color, false, &game->font, zero);
-				}
-			}
-
-			{
-				float passed = game->render_time - soft_data->gold_change_timestamp;
-				float font_size = ease_out_elastic_advanced(passed, 0, 0.5f, 64, 48);
-				float t = ease_linear_advanced(passed, 0, 1, 1, 0);
-				s_v4 color = lerp_color(make_color(0.8f, 0.8f, 0), make_color(1, 1, 0.3f), t);
-				draw_text(format_text("Gold: %i", soft_data->gold), wxy(0.87f, 0.04f), font_size, color, true, &game->font, zero);
-			}
-			{
-				float passed = game->render_time - soft_data->life_change_timestamp;
-				float font_size = ease_out_elastic_advanced(passed, 0, 0.5f, 64, 48);
-				float t = ease_linear_advanced(passed, 0, 1, 1, 0);
-				s_v4 color = lerp_color(hex_to_rgb(0xDF20AF), hex_to_rgb(0xDF204F), t);
-				draw_text(format_text("Lives: %i", get_max_lives() - soft_data->lives_lost), wxy(0.87f, 0.12f), font_size, color, true, &game->font, zero);
-			}
-			{
-				s_time_format data = update_count_to_time_format(game->hard_data.update_count);
-				s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
-				if(!game->hide_timer) {
-					draw_text(text, wxy(0.87f, 0.2f), 48, make_color(1), true, &game->font, zero);
-				}
-			}
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		progression bar start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			{
-				s_v2 under_size = c_game_area * v2(0.95f, 0.03f);
-				s_v2 pos = gxy(0.5f, 0.04f) - under_size * 0.5f;
-
-				// @Note(tkap, 03/08/2025): Separators
-				int count = e_enemy_count - 1;
-				float advance = under_size.x / (float)count;
-				s_v4 color = hex_to_rgb(0xE11E29);
-				if(!soft_data->boss_spawned) {
-					for(int i = 0; i < count; i += 1) {
-						s_v2 temp_pos = pos;
-						temp_pos.x += advance * i;
-						if(i > 0) {
-							draw_rect_topleft(temp_pos, under_size * v2(0.01f, 1.0f), multiply_rgb(color, 1.5f));
-						}
-						if(soft_data->progression_timestamp_arr[i] > 0) {
-							s_v2 text_pos = temp_pos;
-							text_pos.x += advance * 0.5f;
-							text_pos.y += under_size.y * 0.5f;
-							s_time_format format = update_time_to_time_format(soft_data->progression_timestamp_arr[i]);
-							s_len_str text = format_text("%01i:%02i", format.minutes, format.seconds);
-							draw_text(text, text_pos, 24, make_color(1), true, &game->font, {.z = 3});
-						}
-					}
-				}
-
-				s_v2 over_size = v2(0, under_size.y);
-				if(soft_data->boss_spawned) {
-					s_entity* boss = get_entity(soft_data->boss_ref);
-					if(boss) {
-						float percent = boss->damage_taken / get_enemy_max_health(boss->enemy_type);
-						percent = at_most(1.0f, percent);
-						over_size.x = under_size.x * (1.0f - percent);
-					}
-				}
-				else {
-					for_enum(type_i, e_enemy) {
-						if(type_i == e_enemy_count - 1) { break; }
-						int num_needed = g_enemy_type_data[type_i + 1].prev_enemy_required_kill_count;
-						int num_killed = soft_data->enemy_type_kill_count_arr[type_i];
-						float completion = at_most(1.0f, num_killed / (float)num_needed);
-						over_size.x += advance * completion;
-						if(num_killed < num_needed) {
-							break;
-						}
-					}
-				}
-				// @Note(tkap, 03/08/2025): Over
-				draw_rect_topleft(pos, over_size, multiply_rgb(color, 0.8f));
-
-				// @Note(tkap, 03/08/2025): Under
-				draw_rect_topleft(pos, under_size, multiply_rgb(color, 0.45f));
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		progression bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-			{
 				s_render_flush_data data = make_render_flush_data(zero, zero);
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_read_and_write;
 				render_flush(data, true);
-			}
-
-			if(!game->disable_hover_over_upgrade_to_pause && are_we_hovering_over_ui(g_mouse) && !game->do_hard_reset) {
-				game->speed = 0;
-				draw_text(S("Paused"), gxy(0.5f, 0.1f), sin_range(64, 80, game->render_time * 8), make_color(1), true, &game->font, zero);
-			}
-			else {
-				game->speed = wanted_speed;
 			}
 
 			{
@@ -1939,30 +1036,6 @@ func void render(float interp_dt, float delta)
 			};
 			s_v2 size = v2(320, 48);
 			s_container container = make_down_center_x_container(rect, size, 10);
-
-			if(do_button_ex(S("+100000 gold"), container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
-				add_gold(100000);
-			}
-			if(do_button_ex(S("Spawn boss"), container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
-				spawn_enemy(e_enemy_boss);
-			}
-			if(do_button_ex(S("Win"), container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
-				soft_data->boss_defeated_timestamp = game->update_time;
-			}
-			if(do_button_ex(S("Lose"), container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
-				soft_data->frame_data.lives_to_lose = 99999;
-			}
-			if(do_button_ex(S("Spawn basic enemy"), container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
-				spawn_enemy(e_enemy_basic);
-			}
-
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_no_write;
-				render_flush(data, true);
-			}
 		}
 		#endif
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		cheat menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -2692,104 +1765,10 @@ func void do_screen_shake(float intensity)
 	soft_data->shake_intensity = intensity;
 }
 
-func void draw_background(s_m4 ortho, b8 scroll)
-{
-	{
-		s_instance_data data = zero;
-		data.model = m4_translate(v3(c_world_center, 0));
-		data.model = m4_multiply(data.model, m4_scale(v3(c_world_size, 1)));
-		data.color = make_color(1);
-		if(scroll) {
-			data.mix_weight = 1;
-		}
-		add_to_render_group(data, e_shader_tile_background, e_texture_white, e_mesh_quad);
-	}
-
-	s_render_flush_data data = make_render_flush_data(zero, zero);
-	data.projection = ortho;
-	data.blend_mode = e_blend_mode_normal;
-	data.depth_mode = e_depth_mode_no_read_no_write;
-	render_flush(data, true);
-}
-
-
 func void teleport_entity(s_entity* entity, s_v2 pos)
 {
 	entity->pos = pos;
 	entity->prev_pos = pos;
-}
-
-func float get_player_damage()
-{
-	float result = 0;
-	result += 10;
-	result *= 1.0f + get_upgrade_boost(e_upgrade_damage) / 100.0f;
-	if(timer_is_active(game->soft_data.dash_timer, game->update_time)) {
-		result *= 3;
-	}
-	return result;
-}
-
-func float get_player_attack_range()
-{
-	float result = 0;
-	result += c_player_attack_range;
-	result *= 1.0f + get_upgrade_boost(e_upgrade_range) / 100.0f;
-	return result;
-}
-
-func float get_player_speed()
-{
-	float result = 0;
-	result += 1.5f;
-	result *= 1.0f + get_upgrade_boost(e_upgrade_speed) / 100.0f;
-	return result;
-}
-
-func float get_enemy_max_health(e_enemy type)
-{
-	float result = c_enemy_health;
-	result *= g_enemy_type_data[type].health_multi;
-	return result;
-}
-
-func b8 damage_enemy(s_entity* enemy, float damage, b8 is_dash_hit)
-{
-	b8 dead = false;
-	float max_health = get_enemy_max_health(enemy->enemy_type);
-	enemy->damage_taken += damage;
-	enemy->hit_timestamp = game->update_time;
-	if(enemy->damage_taken >= max_health) {
-		dead = true;
-	}
-
-	{
-		s_entity fct = make_entity();
-		fct.spawn_timestamp = game->render_time;
-		if(is_dash_hit) {
-			builder_add(&fct.builder, "$$ff2222%.0f$.", damage);
-			fct.font_size = 40;
-			fct.shake = true;
-		}
-		else {
-			builder_add(&fct.builder, "%.0f", damage);
-			fct.font_size = 32;
-		}
-		fct.duration = 1.5f;
-		fct.pos = enemy->pos;
-		fct.vel.x = randf32_11(&game->rng) * 50;
-		if(!game->disable_damage_numbers) {
-			entity_manager_add_if_not_full(&game->soft_data.entity_arr, e_entity_fct, fct);
-		}
-	}
-
-	return dead;
-}
-
-func void make_dying_enemy(s_entity enemy)
-{
-	s_entity dying_enemy = enemy;
-	entity_manager_add_if_not_full(&game->soft_data.entity_arr, e_entity_dying_enemy, dying_enemy);
 }
 
 func s_particle_emitter_a make_emitter_a()
@@ -2890,125 +1869,6 @@ func s_v2 container_get_pos_and_advance(s_container* c)
 	return result;
 }
 
-func b8 can_afford(int curr_gold, int cost)
-{
-	b8 result = curr_gold >= cost;
-	return result;
-}
-
-func void apply_upgrade(e_upgrade id, int count)
-{
-	game->soft_data.upgrade_count[id] += count;
-}
-
-func int get_upgrade_level(e_upgrade id)
-{
-	int result = game->soft_data.upgrade_count[id];
-	return result;
-}
-
-func float get_upgrade_boost(e_upgrade id)
-{
-	int level = get_upgrade_level(id);
-	if(level > 0 && id == e_upgrade_lightning_bolt) {
-		level -= 1;
-	}
-	else if(level > 0 && id == e_upgrade_auto_attack) {
-		level -= 1;
-	}
-	float result = level * g_upgrade_data[id].stat_boost;
-	return result;
-}
-
-func s_v2i get_enemy_atlas_index(e_enemy type)
-{
-	s_v2i result = zero;
-	result = g_enemy_type_data[type].atlas_index;
-	return result;
-}
-
-func s_v2 get_enemy_size(e_enemy type)
-{
-	s_v2 result = g_enemy_type_data[type].size;
-	return result;
-}
-
-func float get_player_knockback()
-{
-	float result = c_knockback;
-	result *= 1.0f + get_upgrade_boost(e_upgrade_knockback) / 100.0f;
-	return result;
-}
-
-func void add_gold(int gold)
-{
-	game->soft_data.gold += gold;
-	game->soft_data.gold_change_timestamp = game->render_time;
-}
-
-func void lose_lives(int how_many)
-{
-	game->soft_data.frame_data.lives_to_lose += how_many;
-	play_sound(e_sound_lose_life, zero);
-}
-
-func int spawn_enemy(e_enemy type)
-{
-	s_entity enemy = make_entity();
-	enemy.enemy_type = type;
-	enemy.spawn_timestamp = game->update_time;
-	s_v2 pos = gxy(0.5f) + v2_from_angle(randf_range(&game->rng, 0, c_tau)) * c_game_area.x * 0.6f;
-	teleport_entity(&enemy, pos);
-	int index = entity_manager_add(&game->soft_data.entity_arr, e_entity_enemy, enemy);
-	return index;
-}
-
-func float get_dash_cooldown()
-{
-	float result = c_dash_cooldown;
-	result *= 1.0f - get_upgrade_boost(e_upgrade_dash_cooldown) / 100.0f;
-	return result;
-}
-
-func b8 is_upgrade_maxed(e_upgrade id)
-{
-	int max_upgrades = g_upgrade_data[id].max_upgrades;
-	b8 result = false;
-	if(max_upgrades > 0 && game->soft_data.upgrade_count[id] >= max_upgrades) {
-		result = true;
-	}
-	return result;
-}
-
-func int get_max_lives()
-{
-	int result = c_max_lives;
-	result += (int)get_upgrade_boost(e_upgrade_max_lives);
-	return result;
-}
-
-func int get_hits_per_attack()
-{
-	int result = 1;
-	result += (int)get_upgrade_boost(e_upgrade_more_hits_per_attack);
-	return result;
-}
-
-func float get_lightning_bolt_cooldown()
-{
-	float frequency = 1.0f / c_lightning_bolt_cooldown;
-	frequency *= 1.0f + get_upgrade_boost(e_upgrade_lightning_bolt) / 100.0f;
-	float result = 1.0f / frequency;
-	return result;
-}
-
-func float get_lightning_bolt_frequency()
-{
-	float cd = get_lightning_bolt_cooldown();
-	float result = 1.0f / cd;
-	return result;
-}
-
 func s_v2 topleft_to_bottomleft_mouse(s_v2 pos, s_v2 size, s_v2 mouse)
 {
 	s_v2 result = pos;
@@ -3041,123 +1901,6 @@ func s_v2 prevent_offscreen(s_v2 pos, s_v2 size)
 	return result;
 }
 
-func s_len_str get_upgrade_description(e_upgrade id)
-{
-	int level = game->soft_data.upgrade_count[id];
-	s_upgrade_data data = g_upgrade_data[id];
-
-	s_str_builder<512> builder;
-	builder.count = 0;
-	switch(id) {
-		xcase e_upgrade_damage: {
-			builder_add(&builder, "+%.0f%% damage\n\n", data.stat_boost);
-			// builder_add(&builder, "Press %sleft click$. or %s%c$. to attack\n\n", c_key_color_str, c_key_color_str, to_upper_case(scancode_to_char(SDL_SCANCODE_S)));
-			builder_add(&builder, "Current: %.0f", get_player_damage());
-		};
-		xcase e_upgrade_speed: {
-			builder_add(&builder, "+%.0f%% movement speed\n\n", data.stat_boost);
-			builder_add(&builder, "Current: %.2f", get_player_speed());
-		};
-		xcase e_upgrade_range: {
-			builder_add(&builder, "+%.0f%% attack range\n\n", data.stat_boost);
-			builder_add(&builder, "Current: %.0f", get_player_attack_range());
-		};
-		xcase e_upgrade_knockback: {
-			builder_add(&builder, "+%.0f%% knockback\n\n", data.stat_boost);
-			builder_add(&builder, "Current: %.0f", get_player_knockback());
-		};
-		xcase e_upgrade_dash_cooldown: {
-			builder_add(&builder, "-%.0f%% dash cooldown\n", data.stat_boost);
-			// builder_add(&builder, "Press %sright click$. or %s%c$. to dash\n", c_key_color_str, c_key_color_str, to_upper_case(scancode_to_char(SDL_SCANCODE_A)));
-			builder_add(&builder, "Attacks do triple damage while dashing\n\n", c_key_color_str, c_key_color_str, to_upper_case(scancode_to_char(SDL_SCANCODE_A)));
-			builder_add(&builder, "Current: %.2f second cooldown", get_dash_cooldown());
-		};
-		xcase e_upgrade_max_lives: {
-			builder_add(&builder, "+%.0f max lives\n\n", data.stat_boost);
-			builder_add(&builder, "Current: %i", get_max_lives());
-		};
-		xcase e_upgrade_more_hits_per_attack: {
-			builder_add(&builder, "+%.0f enemy hit per attack\n\n", data.stat_boost);
-			builder_add(&builder, "Current: %i", get_hits_per_attack());
-		};
-		xcase e_upgrade_lightning_bolt: {
-			if(level == 0) {
-				float cooldown = get_lightning_bolt_cooldown();
-				builder_add(&builder, "A lightning bolt strikes a nearby\nenemy every %.2f second%s", cooldown, handle_plural(cooldown));
-			}
-			else {
-				builder_add(&builder, "Lightning bolts strike with %.0f%% increased frequency\n\n", data.stat_boost);
-				float frequency = get_lightning_bolt_frequency();
-				builder_add(&builder, "Current: %.2f hit%s per second", frequency, handle_plural(frequency));
-			}
-		};
-		xcase e_upgrade_auto_attack: {
-			if(level == 0) {
-				builder_add(&builder, "Attacks happen automatically every %.2f second%s\nNo more clicking, no more stamina!", get_auto_attack_cooldown(), handle_plural(get_auto_attack_cooldown()));
-			}
-			else {
-				builder_add(&builder, "Auto attacks have %.0f%% increased frequency\n\n", data.stat_boost);
-				float frequency = get_auto_attack_frequency();
-				builder_add(&builder, "Current: %.2f hit%s per second", frequency, handle_plural(frequency));
-			}
-		};
-		break; invalid_default_case;
-	}
-	int key = (int)SDLK_1 + id;
-	builder_add(&builder, "\n\nHotkey [%s%c$.]", c_key_color_str, '1' + key - SDLK_1);
-	int num_queued = 0;
-	foreach_val(queued_i, queued, game->soft_data.queued_upgrade_arr) {
-		if(queued.id == id) {
-			num_queued += queued.count;
-		}
-	}
-	if(num_queued > 0) {
-		builder_add(&builder, "\n$$aaaaaa%i upgrade%s queued$.", num_queued, handle_plural((float)num_queued));
-	}
-	else {
-		builder_add(&builder, "\n$$aaaaaaRight click to queue upgrades$.");
-	}
-
-	s_len_str temp = builder_to_len_str(&builder);
-	s_len_str result = format_text("%.*s", expand_str(temp));
-	return result;
-}
-
-func b8 are_we_hovering_over_ui(s_v2 mouse)
-{
-	b8 result = mouse.x > c_game_area.x;
-	return result;
-}
-
-func b8 do_we_have_auto_attack()
-{
-	b8 result = get_upgrade_level(e_upgrade_auto_attack) > 0;
-	return result;
-}
-
-func float get_auto_attack_cooldown()
-{
-	float frequency = 1.0f / c_auto_attack_cooldown;
-	frequency *= 1.0f + get_upgrade_boost(e_upgrade_auto_attack) / 100.0f;
-	float result = 1.0f / frequency;
-	return result;
-}
-
-func float get_auto_attack_frequency()
-{
-	float result = 1.0f / get_auto_attack_cooldown();
-	return result;
-}
-
-func float get_attack_or_auto_attack_cooldown()
-{
-	float result = 0;
-	if(do_we_have_auto_attack()) {
-		result = get_auto_attack_cooldown();
-	}
-	return result;
-}
-
 func char* handle_plural(float x)
 {
 	char* result = "s";
@@ -3165,90 +1908,6 @@ func char* handle_plural(float x)
 		result = "";
 	}
 	return result;
-}
-
-func s_entity make_enemy_death_particles(s_v2 pos)
-{
-	s_entity emitter = make_entity();
-
-	emitter.emitter_a = make_emitter_a();
-	emitter.emitter_a.pos = v3(pos, 0.0f);
-	emitter.emitter_a.dir.x = 0.5f;
-	emitter.emitter_a.dir.y = -1.0f;
-	emitter.emitter_a.dir_rand = zero;
-	emitter.emitter_a.dir_rand.x = 1;
-	emitter.emitter_a.particle_duration *= 0.5f;
-	emitter.emitter_a.radius *= 0.5f;
-	emitter.emitter_a.color_arr[0].color = make_color(0.1f);
-
-	emitter.emitter_a.particle_duration_rand = 1.0f;
-	emitter.emitter_a.radius_rand = 1.0f;
-	emitter.emitter_a.speed_rand = 1.0f;
-
-	emitter.emitter_b = make_emitter_b();
-	emitter.emitter_b.spawn_type = e_emitter_spawn_type_circle;
-	emitter.emitter_b.spawn_data.x = 10;
-	emitter.emitter_b.particle_count = 200;
-
-	return emitter;
-}
-
-func s_entity make_enemy_hit_particles(s_v2 pos)
-{
-	s_entity emitter = make_entity();
-
-	emitter.emitter_a = make_emitter_a();
-	emitter.emitter_a.dir = v3(1, 1, 0);
-	emitter.emitter_a.dir_rand = v3(1, 1, 0);
-	emitter.emitter_a.pos = v3(pos, 0.0f);
-	emitter.emitter_a.particle_duration *= 0.33f;
-	emitter.emitter_a.radius *= 0.5f;
-	emitter.emitter_a.color_arr[0].color = make_color(0.5f, 0.1f, 0.1f);
-
-	emitter.emitter_a.particle_duration_rand = 1.0f;
-	emitter.emitter_a.radius_rand = 1.0f;
-	emitter.emitter_a.speed_rand = 1.0f;
-
-	emitter.emitter_b = make_emitter_b();
-	emitter.emitter_b.particle_count = 200;
-
-	return emitter;
-}
-
-func s_entity make_circle_particles()
-{
-	s_entity emitter = make_entity();
-
-	emitter.emitter_a = make_emitter_a();
-	emitter.emitter_a.dir = v3(0.1f, -0.5f, 0);
-	emitter.emitter_a.dir_rand = v3(1, 0, 0);
-	emitter.emitter_a.pos = v3(gxy(0.5f), 0.0f);
-	emitter.emitter_a.particle_duration *= 2;
-	emitter.emitter_a.radius *= 0.5f;
-	// emitter.emitter_a.color_arr[0].color = make_color(0.5f, 0.1f, 0.1f);
-	emitter.emitter_a.color_arr.count = 4;
-	float strength = 0.2f;
-	emitter.emitter_a.color_arr[0].color = make_color(strength);
-	emitter.emitter_a.color_arr[1].color = make_color(strength, strength, 0.0f);
-	emitter.emitter_a.color_arr[2].color = make_color(strength, 0.0f, 0.0f);
-	emitter.emitter_a.color_arr[3].color = make_color(0.0f);
-	emitter.emitter_a.color_arr[0].percent = 0.0f;
-	emitter.emitter_a.color_arr[1].percent = 0.2f;
-	emitter.emitter_a.color_arr[2].percent = 0.6f;
-	emitter.emitter_a.color_arr[3].percent = 1.0f;
-
-	emitter.emitter_a.particle_duration_rand = 0.5f;
-	emitter.emitter_a.radius_rand = 0.5f;
-	emitter.emitter_a.speed_rand = 1.0f;
-
-	emitter.emitter_b = make_emitter_b();
-	emitter.emitter_b.particle_count = 10;
-	emitter.emitter_b.particles_per_second = 100;
-	emitter.emitter_b.duration = -1;
-	emitter.emitter_b.spawn_type = e_emitter_spawn_type_circle_outline;
-	emitter.emitter_b.spawn_data.x = c_circle_radius * 0.5f;
-
-	return emitter;
 }
 
 template <typename t, typename F>
@@ -3295,40 +1954,6 @@ func void radix_sort_32(t* source, u32 count, F get_radix, s_linear_arena* arena
 	}
 }
 
-func u32 get_radix_from_enemy_index(int index)
-{
-	assert(game->soft_data.entity_arr.active[index]);
-	float dist = v2_distance_squared(game->soft_data.entity_arr.data[index].pos, gxy(0.5f));
-	u32 result = float_to_radix(dist);
-	return result;
-}
-
-func s_entity make_lose_lives_particles()
-{
-	s_entity emitter = make_entity();
-
-	emitter.emitter_a = make_emitter_a();
-	emitter.emitter_a.pos = v3(gxy(0.5f), 0.0f);
-	emitter.emitter_a.dir = v3(0.4f, -1.0f, 0.0);
-	emitter.emitter_a.dir_rand = v3(1, 0, 0);
-	emitter.emitter_a.particle_duration *= 2.0f;
-	emitter.emitter_a.radius *= 0.5f;
-	emitter.emitter_a.gravity = 10;
-	emitter.emitter_a.speed = 1000;
-	emitter.emitter_a.color_arr[0].color = make_color(1.0f, 0.1f, 0.1f);
-
-	emitter.emitter_a.particle_duration_rand = 1.0f;
-	emitter.emitter_a.radius_rand = 1.0f;
-	emitter.emitter_a.speed_rand = 0.5f;
-
-	emitter.emitter_b = make_emitter_b();
-	emitter.emitter_b.spawn_type = e_emitter_spawn_type_circle;
-	emitter.emitter_b.spawn_data.x = 32;
-	emitter.emitter_b.particle_count = 200;
-
-	return emitter;
-}
-
 func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha)
 {
 	pos += size * 0.5f;
@@ -3338,12 +1963,6 @@ func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha)
 	pos.y -= size.x * 0.05f;
 	s_v4 color = set_alpha(c_key_color, alpha);
 	draw_text(str, pos, size.x, color, true, &game->font, {.z = 1});
-}
-
-func b8 completed_attack_tutorial()
-{
-	b8 result = game->num_times_we_attacked_an_enemy >= 3;
-	return result;
 }
 
 func void add_multiplicative_light(s_v2 pos, float radius, s_v4 color, float smoothness)
@@ -3368,28 +1987,6 @@ func void add_additive_light(s_v2 pos, float radius, s_v4 color, float smoothnes
 	if(!game->additive_light_arr.is_full()) {
 		game->additive_light_arr.add(light);
 	}
-}
-
-func int get_progression()
-{
-	int result = 0;
-	for_enum(type_i, e_enemy) {
-		if(type_i == 0) { continue; }
-		int num_needed = g_enemy_type_data[type_i].prev_enemy_required_kill_count;
-		if(game->soft_data.enemy_type_kill_count_arr[type_i - 1] >= num_needed) {
-			result += 1;
-		}
-	}
-	return result;
-}
-
-func float get_spawn_delay()
-{
-	float frequency = 1.0f / c_spawn_delay;
-	float progression_multi = get_progression() * 33.0f;
-	frequency *= 1.0f + progression_multi / 100.0f;
-	float result = 1.0f / frequency;
-	return result;
 }
 
 func s_entity make_entity()
@@ -3443,98 +2040,4 @@ func s_active_sound* find_playing_sound(e_sound id)
 func void do_lerpable_snap(s_lerpable* lerpable, float dt, float max_diff)
 {
 	lerpable->curr = lerp_snap(lerpable->curr, lerpable->target, dt, max_diff);
-}
-
-func s_entity make_boss_death_particles(s_v2 pos)
-{
-	s_entity emitter = make_entity();
-
-	emitter.emitter_a = make_emitter_a();
-	emitter.emitter_a.dir = v3(1, 1, 0);
-	emitter.emitter_a.dir_rand = v3(1, 1, 0);
-	emitter.emitter_a.pos = v3(pos, 0.0f);
-	emitter.emitter_a.particle_duration *= 3;
-	emitter.emitter_a.speed *= 4;
-	emitter.emitter_a.radius *= 2.5f;
-	emitter.emitter_a.color_arr[0].color = make_color(0.5f, 0.5f, 0.1f);
-
-	emitter.emitter_a.particle_duration_rand = 1.0f;
-	emitter.emitter_a.radius_rand = 1.0f;
-	emitter.emitter_a.speed_rand = 0.5f;
-
-	emitter.emitter_b = make_emitter_b();
-	emitter.emitter_b.particles_per_second = 3;
-	emitter.emitter_b.particle_count = 200;
-	emitter.emitter_b.duration = 3;
-
-	return emitter;
-}
-
-func int get_upgrade_queue_count(e_upgrade id)
-{
-	int result = 0;
-	foreach_val(queued_i, queued, game->soft_data.queued_upgrade_arr) {
-		if(queued.id == id) {
-			result += queued.count;
-		}
-	}
-	return result;
-}
-
-func b8 is_upgrade_queued(e_upgrade id)
-{
-	b8 result = get_upgrade_queue_count(id) > 0;
-	return result;
-}
-
-func void hit_enemy(int i, float damage, float knockback_to_add)
-{
-	s_soft_game_data* soft_data = &game->soft_data;
-	auto entity_arr = &soft_data->entity_arr;
-	s_entity* enemy = &entity_arr->data[i];
-	assert(entity_arr->active[i]);
-	if(enemy->knockback.valid) {
-		enemy->knockback.value += knockback_to_add;
-	}
-	else {
-		enemy->knockback = maybe(knockback_to_add);
-	}
-
-	b8 are_we_dashing = timer_is_active(game->soft_data.dash_timer, game->update_time);
-
-	b8 dead = damage_enemy(enemy, damage, are_we_dashing);
-	if(dead) {
-		if(enemy->enemy_type == e_enemy_boss) {
-			soft_data->boss_defeated_timestamp = game->update_time;
-			add_emitter(make_boss_death_particles(enemy->pos));
-			play_sound(e_sound_win, zero);
-		}
-		int gold_reward = g_enemy_type_data[enemy->enemy_type].gold_reward;
-		{
-			s_entity fct = make_entity();
-			fct.duration = 0.66f;
-			fct.fct_type = 1;
-			fct.spawn_timestamp = game->render_time;
-			builder_add(&fct.builder, "$$ffff00+%ig$.", gold_reward);
-			fct.pos = enemy->pos;
-			fct.pos.y += get_enemy_size(enemy->enemy_type).y * 0.5f;
-			fct.font_size = 32;
-			if(!game->disable_gold_numbers) {
-				entity_manager_add_if_not_full(&game->soft_data.entity_arr, e_entity_fct, fct);
-			}
-		}
-		soft_data->spawn_timer += get_spawn_delay() * 0.5f;
-		add_gold(gold_reward);
-		make_dying_enemy(*enemy);
-		soft_data->enemy_type_kill_count_arr[enemy->enemy_type] += 1;
-		{
-			if(enemy->enemy_type < e_enemy_boss) {
-				int num_needed_kills = g_enemy_type_data[enemy->enemy_type + 1].prev_enemy_required_kill_count;
-				if(soft_data->enemy_type_kill_count_arr[enemy->enemy_type] == num_needed_kills) {
-					soft_data->progression_timestamp_arr[enemy->enemy_type] = game->update_time;
-				}
-			}
-		}
-		entity_manager_remove(entity_arr, e_entity_enemy, i);
-	}
 }

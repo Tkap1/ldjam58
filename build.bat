@@ -7,7 +7,7 @@ if not exist build\NUL mkdir build
 
 SETLOCAL ENABLEDELAYEDEXPANSION
 
-func_decl_gen.exe src/*
+@REM func_decl_gen.exe src/*
 
 build\metaprogram.exe -Dm_debug
 

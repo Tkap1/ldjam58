@@ -166,151 +166,6 @@ struct s_timed_msg
 	s_str_builder<64> builder;
 };
 
-enum e_enemy_movement
-{
-	e_enemy_movement_normal,
-	e_enemy_movement_zig_zag,
-	e_enemy_movement_spiral,
-};
-
-data_enum(e_enemy,
-
-	s_enemy_type_data
-	g_enemy_type_data
-
-	basic {
-		.spawn_weight = 1000,
-		.health_multi = 1.0f,
-		.gold_reward = 1,
-		.knockback_resistance = 0.0f,
-		.size = {32, 32},
-		.atlas_index = {125, 25},
-	}
-
-	b {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 3000,
-		.health_multi = 2.0f,
-		.gold_reward = 2,
-		.knockback_resistance = 0.0f,
-		.size = {32, 32},
-		.atlas_index = {125, 26},
-	}
-
-	c {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 5000,
-		.health_multi = 3.0f,
-		.gold_reward = 3,
-		.knockback_resistance = 0.0f,
-		.size = {32, 32},
-		.atlas_index = {125, 27},
-	}
-
-	fast {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 7000,
-		.health_multi = 1.0f,
-		.gold_reward = 4,
-		.speed_multi = 2,
-		.knockback_resistance = -1.0f,
-		.size = {32, 32},
-		.atlas_index = {125, 28},
-	}
-
-	big {
-		.prev_enemy_required_kill_count = 20,
-		.spawn_weight = 9000,
-		.health_multi = 20.0f,
-		.gold_reward = 10,
-		.speed_multi = 1,
-		.knockback_resistance = 0.75f,
-		.movement_type = e_enemy_movement_spiral,
-		.size = {64, 64},
-		.atlas_index = {113, 16},
-	}
-
-	fast_zig_zag {
-		.prev_enemy_required_kill_count = 5,
-		.spawn_weight = 11000,
-		.health_multi = 2.0f,
-		.gold_reward = 8,
-		.speed_multi = 4,
-		.knockback_resistance = -1.0f,
-		.movement_type = e_enemy_movement_zig_zag,
-		.size = {32, 32},
-		.atlas_index = {104, 14},
-	}
-
-	d {
-		.prev_enemy_required_kill_count = 20,
-		.spawn_weight = 13000,
-		.health_multi = 10.0f,
-		.gold_reward = 15,
-		.knockback_resistance = 0.5f,
-		.size = {48, 48},
-		.atlas_index = {115, 40},
-	}
-
-	e {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 15000,
-		.health_multi = 20.0f,
-		.gold_reward = 30,
-		.speed_multi = 1.25f,
-		.knockback_resistance = 0.5f,
-		.size = {48, 48},
-		.atlas_index = {113, 37},
-	}
-
-	spiral2 {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 17000,
-		.health_multi = 50.0f,
-		.gold_reward = 50,
-		.speed_multi = 3.0f,
-		.knockback_resistance = 0.75f,
-		.movement_type = e_enemy_movement_spiral,
-		.size = {48, 48},
-		.atlas_index = {107, 39},
-	}
-
-	f {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 19000,
-		.health_multi = 200.0f,
-		.gold_reward = 100,
-		.speed_multi = 1.0f,
-		.knockback_resistance = 0.9f,
-		.size = {48, 48},
-		.atlas_index = {110, 41},
-	}
-
-	boss {
-		.prev_enemy_required_kill_count = 10,
-		.spawn_weight = 1000000,
-		.health_multi = 3000.0f,
-		.gold_reward = 100,
-		.speed_multi = 0.5f,
-		.knockback_resistance = 0.99f,
-		.size = {128, 128},
-		.atlas_index = {125, 29},
-	}
-)
-
-struct s_enemy_type_data
-{
-	int prev_enemy_required_kill_count;
-	u32 spawn_weight;
-	float health_multi;
-	int gold_reward;
-	float speed_multi = 1;
-	float knockback_resistance;
-	e_enemy_movement movement_type;
-	s_v2 size;
-	s_v2i atlas_index;
-};
-
 struct s_container
 {
 	s_v2 curr_pos;
@@ -333,89 +188,6 @@ enum e_button_result
 	e_button_result_right_click,
 };
 
-data_enum(e_upgrade,
-	s_upgrade_data
-	g_upgrade_data
-
-	damage {
-		.name = S("Damage"),
-		.cost = 10,
-		.extra_cost_per_level = 5,
-		.stat_boost = 50,
-	}
-
-	speed {
-		.name = S("Speed"),
-		.cost = 10,
-		.extra_cost_per_level = 5,
-		.stat_boost = 20,
-		.max_upgrades = 5,
-	}
-
-	knockback {
-		.name = S("Knockback"),
-		.cost = 10,
-		.extra_cost_per_level = 5,
-		.stat_boost = 20,
-	}
-
-	range {
-		.name = S("Attack range"),
-		.cost = 20,
-		.extra_cost_per_level = 5,
-		.stat_boost = 20,
-	}
-
-	dash_cooldown {
-		.name = S("Dash cooldown"),
-		.cost = 30,
-		.extra_cost_per_level = 20,
-		.stat_boost = 20,
-		.max_upgrades = 5,
-	}
-
-	max_lives {
-		.name = S("Lives"),
-		.cost = 30,
-		.extra_cost_per_level = 5,
-		.stat_boost = 5,
-		.max_upgrades = 4,
-	}
-
-	lightning_bolt {
-		.name = S("Lightning bolt"),
-		.cost = 50,
-		.extra_cost_per_level = 30,
-		.stat_boost = 50,
-	}
-
-	more_hits_per_attack {
-		.name = S("Multistrike"),
-		.cost = 100,
-		.extra_cost_per_level = 200,
-		.stat_boost = 1,
-		.max_upgrades = 4,
-	}
-
-	auto_attack {
-		.name = S("Auto attack"),
-		.cost = 200,
-		.extra_cost_per_level = 100,
-		.stat_boost = 25,
-	}
-
-)
-
-struct s_upgrade_data
-{
-	s_len_str name;
-	int cost;
-	int extra_cost_per_level;
-	float stat_boost;
-	int max_upgrades;
-};
-
-
 struct s_entity
 {
 	int id;
@@ -426,43 +198,10 @@ struct s_entity
 	float duration;
 	union {
 
-		// @Note(tkap, 31/07/2025): Player
-		struct {
-			float did_attack_enemy_timestamp;
-			float fist_wobble_time;
-			s_v2 attacked_enemy_pos;
-			int range_emitter;
-			float fist_rotation[2];
-			float stamina;
-		};
-
 		// @Note(tkap, 31/07/2025): Emitter
 		struct {
 			s_particle_emitter_a emitter_a;
 			s_particle_emitter_b emitter_b;
-		};
-
-		// @Note(tkap, 31/07/2025): Enemy
-		struct {
-			float remove_soon_timestamp;
-			e_enemy enemy_type;
-			s_maybe<float> knockback;
-			float damage_taken;
-			float hit_timestamp;
-		};
-
-		// @Note(tkap, 31/07/2025): fct
-		struct {
-			b8 shake;
-			int fct_type;
-			float font_size;
-			s_str_builder<16> builder;
-			s_v2 vel;
-		};
-
-		// @Note(tkap, 31/07/2025): visual effect
-		struct {
-			s_v2 effect_size;
 		};
 	};
 };
@@ -472,29 +211,10 @@ struct s_frame_data
 	int lives_to_lose;
 };
 
-struct s_queued_upgrade
-{
-	e_upgrade id;
-	int count;
-};
-
 struct s_soft_game_data
 {
-	float progression_timestamp_arr[e_enemy_count];
-	s_list<s_queued_upgrade, 64> queued_upgrade_arr;
-	float boss_defeated_timestamp;
 	int frames_to_freeze;
-	s_entity_ref boss_ref;
-	b8 boss_spawned;
 	s_frame_data frame_data;
-	int lives_lost;
-	int gold;
-	float spawn_timer;
-	float life_change_timestamp;
-	float gold_change_timestamp;
-	s_timer dash_timer;
-	s_timer lightning_bolt_timer;
-	s_timer attack_timer;
 	b8 tried_to_submit_score;
 	int update_count;
 	float shake_intensity;
@@ -505,10 +225,6 @@ struct s_soft_game_data
 	s_entity_manager<s_entity, c_max_entities> entity_arr;
 
 	s_list<s_timed_msg, 8> timed_msg_arr;
-
-	int upgrade_count[e_upgrade_count];
-
-	int enemy_type_kill_count_arr[e_enemy_count];
 };
 
 struct s_hard_game_data
@@ -528,7 +244,6 @@ struct s_light
 struct s_game
 {
 	b8 disable_auto_dash_when_no_cooldown;
-	b8 disable_hover_over_upgrade_to_pause;
 	b8 disable_damage_numbers;
 	b8 disable_gold_numbers;
 	b8 disable_lights;
@@ -541,7 +256,6 @@ struct s_game
 	#endif
 	b8 reload_shaders;
 	b8 any_key_pressed;
-	b8 purchased_at_least_one_upgrade;
 	s_linear_arena arena;
 	s_linear_arena update_frame_arena;
 	s_linear_arena render_frame_arena;
@@ -610,5 +324,5 @@ struct s_game
 };
 
 
-#include "generated/generated_game.cpp"
-#include "gen_meta/game.h.globals"
+#include "gen_meta/game.cpp.funcs"
+// #include "gen_meta/game.h.globals"

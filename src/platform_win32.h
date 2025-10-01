@@ -3,4 +3,4 @@
 func DWORD WINAPI watch_for_file_changes(void* arg);
 #endif
 
-#include "generated/generated_platform_emscripten.cpp"
+#include "gen_meta/platform_win32.cpp.funcs"
