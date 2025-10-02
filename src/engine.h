@@ -90,6 +90,11 @@ struct s_draw_data
 	s_v4 mix_color;
 };
 
+struct s_container
+{
+	s_v2 curr_pos;
+	s_v2 advance;
+};
 
 enum e_depth_mode
 {

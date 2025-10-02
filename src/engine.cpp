@@ -1209,3 +1209,22 @@ func void pre_render(float delta)
 	}
 
 }
+
+func void do_basic_options(s_container* container, s_v2 button_size)
+{
+	{
+		s_len_str text = format_text("Sound: %s", game->turn_off_all_sounds ? "Off" : "On");
+		do_bool_button_ex(text, container_get_pos_and_advance(container), button_size, false, &game->turn_off_all_sounds);
+	}
+
+	{
+		s_len_str text = format_text("Music: %s", game->disable_music ? "Off" : "On");
+		do_bool_button_ex(text, container_get_pos_and_advance(container), button_size, false, &game->disable_music);
+	}
+
+	{
+		s_len_str text = format_text("Timer: %s", game->hide_timer ? "Off" : "On");
+		do_bool_button_ex(text, container_get_pos_and_advance(container), button_size, false, &game->hide_timer);
+	}
+
+}

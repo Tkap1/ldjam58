@@ -730,20 +730,7 @@ func void render(float interp_dt, float delta)
 		s_v2 button_size = v2(600, 48);
 		s_container container = make_down_center_x_container(make_rect(wxy(0.0f, 0.05f), c_world_size), button_size, 32);
 
-		{
-			s_len_str text = format_text("Sound: %s", game->turn_off_all_sounds ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->turn_off_all_sounds);
-		}
-
-		{
-			s_len_str text = format_text("Music: %s", game->disable_music ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_music);
-		}
-
-		{
-			s_len_str text = format_text("Timer: %s", game->hide_timer ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->hide_timer);
-		}
+		do_basic_options(&container, button_size);
 
 		{
 			s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");

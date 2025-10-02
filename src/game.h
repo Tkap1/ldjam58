@@ -166,12 +166,6 @@ struct s_timed_msg
 	s_str_builder<64> builder;
 };
 
-struct s_container
-{
-	s_v2 curr_pos;
-	s_v2 advance;
-};
-
 struct s_button_data
 {
 	b8 disabled;
