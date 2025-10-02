@@ -1146,3 +1146,66 @@ func b8 cheat_key(int key)
 	return result;
 }
 #endif
+
+func void pre_render(float delta)
+{
+	reset_linear_arena(&game->render_frame_arena);
+
+	#if defined(_WIN32)
+	while(g_platform_data->hot_read_index[1] < g_platform_data->hot_write_index) {
+		char* path = g_platform_data->hot_file_arr[g_platform_data->hot_read_index[1] % c_max_hot_files];
+		if(strstr(path, ".shader")) {
+			game->reload_shaders = true;
+		}
+		g_platform_data->hot_read_index[1] += 1;
+	}
+	#endif // _WIN32
+
+	if(game->reload_shaders) {
+		game->reload_shaders = false;
+
+		for(int i = 0; i < e_shader_count; i += 1) {
+			s_shader shader = load_shader_from_file(c_shader_path_arr[i], &game->render_frame_arena);
+			if(shader.id > 0) {
+				if(game->shader_arr[i].id > 0) {
+					gl(glDeleteProgram(game->shader_arr[i].id));
+				}
+				game->shader_arr[i] = shader;
+
+				#if defined(m_debug)
+				printf("Loaded %s\n", c_shader_path_arr[i]);
+				#endif // m_debug
+			}
+		}
+	}
+
+	for(int render_pass_i = 0; render_pass_i < c_render_pass_count; render_pass_i += 1) {
+		for(int i = 0; i < e_shader_count; i += 1) {
+			for(int j = 0; j < e_texture_count; j += 1) {
+				for(int k = 0; k < e_mesh_count; k += 1) {
+					game->render_pass_arr[render_pass_i].render_group_index_arr[i][j][k] = -1;
+				}
+			}
+		}
+		game->render_pass_arr[render_pass_i].render_group_arr.count = 0;
+		memset(game->render_pass_arr[render_pass_i].render_instance_count, 0, sizeof(game->render_pass_arr[render_pass_i].render_instance_count));
+	}
+
+	bind_framebuffer(0);
+	clear_framebuffer_depth(0);
+
+	{
+		if(game->disable_music) {
+			game->music_volume.target = 0;
+		}
+		else {
+			game->music_volume.target = 1;
+		}
+		do_lerpable_snap(&game->music_volume, delta * 5, 0.01f);
+		s_active_sound* music = find_playing_sound(e_sound_music);
+		if(music) {
+			music->data.volume = game->music_volume.curr;
+		}
+	}
+
+}

@@ -7,7 +7,23 @@ func s_loaded_sound load_sound_from_file(char* path)
 	SDL_LoadWAV(path, &result.spec, &result.data, &result.size_in_bytes);
 	assert(result.spec.freq == 44100);
 	assert(result.spec.format == 32784);
-	assert(result.spec.channels == 1);
+	if(result.spec.channels == 1) {
+
+	}
+	else if(result.spec.channels == 2) {
+		s16* original_data = (s16*)malloc(result.size_in_bytes);
+		memcpy(original_data, result.data, result.size_in_bytes);
+		s16* updated_data = (s16*)result.data;
+		int sample_count = result.size_in_bytes / sizeof(s16);
+		int half_sample_count = sample_count / 2;
+		for(int i = 0; i < half_sample_count; i += 1) {
+			updated_data[i] = (original_data[i * 2 + 0] / 2) + (original_data[i * 2 + 1] / 2);
+		}
+
+		result.size_in_bytes = result.size_in_bytes / 2;
+		result.spec.channels = 1;
+	}
+	invalid_else;
 	return result;
 }
 

@@ -589,55 +589,13 @@ func void update()
 
 func void render(float interp_dt, float delta)
 {
-	reset_linear_arena(&game->render_frame_arena);
-
-	#if defined(_WIN32)
-	while(g_platform_data->hot_read_index[1] < g_platform_data->hot_write_index) {
-		char* path = g_platform_data->hot_file_arr[g_platform_data->hot_read_index[1] % c_max_hot_files];
-		if(strstr(path, ".shader")) {
-			game->reload_shaders = true;
-		}
-		g_platform_data->hot_read_index[1] += 1;
-	}
-	#endif // _WIN32
-
-	if(game->reload_shaders) {
-		game->reload_shaders = false;
-
-		for(int i = 0; i < e_shader_count; i += 1) {
-			s_shader shader = load_shader_from_file(c_shader_path_arr[i], &game->render_frame_arena);
-			if(shader.id > 0) {
-				if(game->shader_arr[i].id > 0) {
-					gl(glDeleteProgram(game->shader_arr[i].id));
-				}
-				game->shader_arr[i] = shader;
-
-				#if defined(m_debug)
-				printf("Loaded %s\n", c_shader_path_arr[i]);
-				#endif // m_debug
-			}
-		}
-	}
-
-	for(int render_pass_i = 0; render_pass_i < c_render_pass_count; render_pass_i += 1) {
-		for(int i = 0; i < e_shader_count; i += 1) {
-			for(int j = 0; j < e_texture_count; j += 1) {
-				for(int k = 0; k < e_mesh_count; k += 1) {
-					game->render_pass_arr[render_pass_i].render_group_index_arr[i][j][k] = -1;
-				}
-			}
-		}
-		game->render_pass_arr[render_pass_i].render_group_arr.count = 0;
-		memset(game->render_pass_arr[render_pass_i].render_instance_count, 0, sizeof(game->render_pass_arr[render_pass_i].render_instance_count));
-	}
+	pre_render(delta);
 
 	s_hard_game_data* hard_data = &game->hard_data;
 	s_soft_game_data* soft_data = &game->soft_data;
 
 	s_m4 ortho = make_orthographic(0, c_world_size.x, c_world_size.y, 0, -100, 100);
 
-	bind_framebuffer(0);
-	clear_framebuffer_depth(0);
 	clear_framebuffer_color(0, v4(0.0f, 0, 0, 0));
 
 	e_game_state0 state0 = (e_game_state0)get_state(&game->state0);
@@ -647,315 +605,277 @@ func void render(float interp_dt, float delta)
 
 	float wanted_speed = get_wanted_game_speed(interp_dt);
 
-	{
-		if(game->disable_music) {
-			game->music_volume.target = 0;
+	b8 should_do_main_menu = state0 == e_game_state0_main_menu;
+	b8 should_do_pause_menu = state0 == e_game_state0_pause;
+	b8 should_do_leaderboard_menu = state0 == e_game_state0_leaderboard || state0 == e_game_state0_win_leaderboard;
+	b8 should_do_win_leaderboard_menu = state0 == e_game_state0_win_leaderboard;
+	b8 should_do_options_menu = state0 == e_game_state0_options;
+	b8 should_do_play = state0 == e_game_state0_play;
+	b8 should_do_input_name_menu = state0 == e_game_state0_input_name;
+
+	if(should_do_main_menu) {
+		game->speed = 0;
+		game->music_speed.target = 1;
+
+		if(do_button(S("Play"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
+			add_state_transition(&game->state0, e_game_state0_play, game->render_time, c_transition_time);
+			game->do_hard_reset = true;
 		}
-		else {
-			game->music_volume.target = 1;
+
+		if(do_button(S("Leaderboard"), wxy(0.5f, 0.6f), true) == e_button_result_left_click) {
+			#if defined(__EMSCRIPTEN__) || defined(m_winhttp)
+			get_leaderboard(c_leaderboard_id);
+			#endif
+			add_state_transition(&game->state0, e_game_state0_leaderboard, game->render_time, c_transition_time);
 		}
-		do_lerpable_snap(&game->music_volume, delta * 2, 0.01f);
-		s_active_sound* music = find_playing_sound(e_sound_music);
-		assert(music);
-		if(music) {
-			music->data.volume = game->music_volume.curr;
+
+		if(do_button(S("Options"), wxy(0.5f, 0.7f), true) == e_button_result_left_click) {
+			add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
 		}
-	}
 
-	switch(state0) {
+		draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
+		draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
 
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		main menu start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		case e_game_state0_main_menu: {
-			game->speed = 0;
-			game->music_speed.target = 1;
+		if(c_on_web) {
+			s_v4 color = hsv_to_rgb(game->render_time * 360, 1, 1);
+			draw_text(S("Go fullscreen!\n             V"), wxy(0.9f, 0.93f), sin_range(32, 40, game->render_time * 8), color, true, &game->font, zero, 0);
+		}
 
-			if(do_button(S("Play"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
-				add_state_transition(&game->state0, e_game_state0_play, game->render_time, c_transition_time);
-				game->do_hard_reset = true;
-			}
-
-			if(do_button(S("Leaderboard"), wxy(0.5f, 0.6f), true) == e_button_result_left_click) {
-				#if defined(__EMSCRIPTEN__) || defined(m_winhttp)
-				get_leaderboard(c_leaderboard_id);
-				#endif
-				add_state_transition(&game->state0, e_game_state0_leaderboard, game->render_time, c_transition_time);
-			}
-
-			if(do_button(S("Options"), wxy(0.5f, 0.7f), true) == e_button_result_left_click) {
-				add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
-			}
-
-			draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
-			draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
-
-			if(c_on_web) {
-				s_v4 color = hsv_to_rgb(game->render_time * 360, 1, 1);
-				draw_text(S("Go fullscreen!\n             V"), wxy(0.9f, 0.93f), sin_range(32, 40, game->render_time * 8), color, true, &game->font, zero, 0);
-			}
-
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true, 0);
-			}
-
-		} break;
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		main menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		pause menu start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		case e_game_state0_pause: {
-			game->speed = 0;
-			game->music_speed.target = 1;
-
-
-			if(do_button(S("Resume"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
-				pop_state_transition(&game->state0, game->render_time, c_transition_time);
-			}
-
-			if(do_button(S("Leaderboard"), wxy(0.5f, 0.6f), true) == e_button_result_left_click) {
-				#if defined(__EMSCRIPTEN__)
-				get_leaderboard(c_leaderboard_id);
-				#endif
-				add_state_transition(&game->state0, e_game_state0_leaderboard, game->render_time, c_transition_time);
-			}
-
-			if(do_button(S("Options"), wxy(0.5f, 0.7f), true) == e_button_result_left_click) {
-				add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
-			}
-
-			draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
-			draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
-
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true, 0);
-			}
-
-		} break;
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		pause menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		leaderboard start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		case e_game_state0_leaderboard: {
-			game->speed = 0;
-			game->music_speed.target = 1;
-			do_leaderboard();
-
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true, 0);
-			}
-
-		} break;
-
-		case e_game_state0_win_leaderboard: {
-			game->speed = 0;
-			game->music_speed.target = 1;
-			do_leaderboard();
-
-			{
-				s_time_format data = update_count_to_time_format(game->update_count_at_win_time);
-				s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
-				draw_text(text, c_world_center * v2(1.0f, 0.2f), 64, make_rrr(1), true, &game->font, zero, 0);
-
-				draw_text(S("Press R to restart..."), c_world_center * v2(1.0f, 0.4f), sin_range(48, 60, game->render_time * 8.0f), make_rrr(0.66f), true, &game->font, zero, 0);
-			}
-
-
-			b8 want_to_reset = is_key_pressed(SDLK_r, true);
-			if(
-				do_button(S("Restart"), c_world_size * v2(0.87f, 0.82f), true) == e_button_result_left_click
-				|| is_key_pressed(SDLK_ESCAPE, true) || want_to_reset
-			) {
-				pop_state_transition(&game->state0, game->render_time, c_transition_time);
-				game->do_hard_reset = true;
-			}
-
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true, 0);
-			}
-
-		} break;
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		leaderboard end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		options start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		case e_game_state0_options: {
-			game->speed = 0;
-			game->music_speed.target = 1;
-
-			s_v2 pos = wxy(0.5f, 0.12f);
-			s_v2 button_size = v2(600, 48);
-
-			{
-				s_len_str text = format_text("Sound: %s", game->turn_off_all_sounds ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->turn_off_all_sounds);
-				pos.y += 80;
-			}
-
-			{
-				s_len_str text = format_text("Music: %s", game->disable_music ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->disable_music);
-				pos.y += 80;
-			}
-
-			{
-				s_len_str text = format_text("Timer: %s", game->hide_timer ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->hide_timer);
-				pos.y += 80;
-			}
-
-			{
-				s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->disable_lights);
-				pos.y += 80;
-			}
-
-			{
-				s_len_str text = format_text("Damage numbers: %s", game->disable_damage_numbers ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->disable_damage_numbers);
-				pos.y += 80;
-			}
-
-			{
-				s_len_str text = format_text("Gold numbers: %s", game->disable_gold_numbers ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->disable_gold_numbers);
-				pos.y += 80;
-			}
-
-			{
-				s_len_str text = format_text("Auto dash when 0 cooldown: %s", game->disable_auto_dash_when_no_cooldown ? "Off" : "On");
-				do_bool_button_ex(text, pos, button_size, true, &game->disable_auto_dash_when_no_cooldown);
-				pos.y += 80;
-			}
-
-			b8 escape = is_key_pressed(SDLK_ESCAPE, true);
-			if(do_button(S("Back"), wxy(0.87f, 0.92f), true) == e_button_result_left_click || escape) {
-				pop_state_transition(&game->state0, game->render_time, c_transition_time);
-			}
-
-			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true, 0);
-			}
-		} break;
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		options end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		play start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		case e_game_state0_play: {
-			game->speed = wanted_speed;
-			game->music_speed.target = 1;
-
-			handle_state(&hard_data->state1, game->render_time);
-
-			e_game_state1 state1 = (e_game_state1)get_state(&hard_data->state1);
-			switch(state1) {
-				xcase e_game_state1_default: {
-					do_game = true;
-				}
-				xcase e_game_state1_defeat: {
-					do_game = true;
-					do_defeat = true;
-					game->music_speed.target = 0.5f;
-				}
-			}
-
-		} break;
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		play end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-		case e_game_state0_input_name: {
-			game->speed = 0;
-			game->music_speed.target = 1;
-			s_input_name_state* state = &game->input_name_state;
-			float font_size = 36;
-			s_v2 pos = c_world_size * v2(0.5f, 0.4f);
-
-			int count_before = state->name.str.count;
-			b8 submitted = handle_string_input(&state->name, game->render_time);
-			int count_after = state->name.str.count;
-			if(count_before != count_after) {
-				play_sound(e_sound_key, zero);
-			}
-			if(submitted) {
-				b8 can_submit = true;
-				if(state->name.str.count < 2) {
-					can_submit = false;
-					cstr_into_builder(&state->error_str, "Name must have at least 2 characters!");
-				}
-				if(can_submit) {
-					state->error_str.count = 0;
-					#if defined(__EMSCRIPTEN__)
-					set_leaderboard_name(builder_to_len_str(&state->name.str));
-					#endif
-					{
-						s_len_str temp = builder_to_len_str(&state->name.str);
-						game->leaderboard_nice_name.count = 0;
-						builder_add(&game->leaderboard_nice_name, "%.*s", expand_str(temp));
-					}
-				}
-			}
-
-			draw_text(S("Victory!"), c_world_size * v2(0.5f, 0.1f), font_size, make_rrr(1), true, &game->font, zero, 0);
-			draw_text(S("Enter your name"), c_world_size * v2(0.5f, 0.2f), font_size, make_rrr(1), true, &game->font, zero, 0);
-			if(state->error_str.count > 0) {
-				draw_text(builder_to_len_str(&state->error_str), c_world_size * v2(0.5f, 0.3f), font_size, hex_to_rgb(0xD77870), true, &game->font, zero, 0);
-			}
-
-			if(state->name.str.count > 0) {
-				draw_text(builder_to_len_str(&state->name.str), pos, font_size, make_rrr(1), true, &game->font, zero, 0);
-			}
-
-			s_v2 full_text_size = get_text_size(builder_to_len_str(&state->name.str), &game->font, font_size);
-			s_v2 partial_text_size = get_text_size_with_count(builder_to_len_str(&state->name.str), &game->font, font_size, state->name.cursor.value, 0);
-			s_v2 cursor_pos = v2(
-				-full_text_size.x * 0.5f + pos.x + partial_text_size.x,
-				pos.y - font_size * 0.5f
-			);
-
-			s_v2 cursor_size = v2(15.0f, font_size);
-			float t = game->render_time - max(state->name.last_action_time, state->name.last_edit_time);
-			b8 blink = false;
-			constexpr float c_blink_rate = 0.75f;
-			if(t > 0.75f && fmodf(t, c_blink_rate) >= c_blink_rate / 2) {
-				blink = true;
-			}
-			float t2 = clamp(game->render_time - state->name.last_edit_time, 0.0f, 1.0f);
-			s_v4 color = lerp_color(hex_to_rgb(0xffdddd), multiply_rgb_clamped(hex_to_rgb(0xABC28F), 0.8f), 1 - powf(1 - t2, 3));
-			float extra_height = ease_out_elastic2_advanced(t2, 0, 0.75f, 20, 0);
-			cursor_size.y += extra_height;
-
-			if(!state->name.visual_pos_initialized) {
-				state->name.visual_pos_initialized = true;
-				state->name.cursor_visual_pos = cursor_pos;
-			}
-			else {
-				state->name.cursor_visual_pos = lerp_snap(state->name.cursor_visual_pos, cursor_pos, delta * 20);
-			}
-
-			if(!blink) {
-				draw_rect_topleft(state->name.cursor_visual_pos - v2(0.0f, extra_height / 2), cursor_size, color, 0);
-			}
-
+		{
 			s_render_flush_data data = make_render_flush_data(zero, zero);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
-			data.depth_mode = e_depth_mode_no_read_no_write;
+			data.depth_mode = e_depth_mode_no_read_yes_write;
 			render_flush(data, true, 0);
+		}
+	}
 
-		} break;
+	if(should_do_pause_menu) {
+		game->speed = 0;
+		game->music_speed.target = 1;
+
+		if(do_button(S("Resume"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
+			pop_state_transition(&game->state0, game->render_time, c_transition_time);
+		}
+
+		if(do_button(S("Leaderboard"), wxy(0.5f, 0.6f), true) == e_button_result_left_click) {
+			#if defined(__EMSCRIPTEN__)
+			get_leaderboard(c_leaderboard_id);
+			#endif
+			add_state_transition(&game->state0, e_game_state0_leaderboard, game->render_time, c_transition_time);
+		}
+
+		if(do_button(S("Options"), wxy(0.5f, 0.7f), true) == e_button_result_left_click) {
+			add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
+		}
+
+		draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
+		draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
+
+		{
+			s_render_flush_data data = make_render_flush_data(zero, zero);
+			data.projection = ortho;
+			data.blend_mode = e_blend_mode_normal;
+			data.depth_mode = e_depth_mode_no_read_yes_write;
+			render_flush(data, true, 0);
+		}
+	}
+
+	if(should_do_leaderboard_menu) {
+		game->speed = 0;
+		game->music_speed.target = 1;
+		do_leaderboard();
+	}
+
+	if(should_do_win_leaderboard_menu) {
+
+		{
+			s_time_format data = update_count_to_time_format(game->update_count_at_win_time);
+			s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
+			draw_text(text, c_world_center * v2(1.0f, 0.2f), 64, make_rrr(1), true, &game->font, zero, 0);
+
+			draw_text(S("Press R to restart..."), c_world_center * v2(1.0f, 0.4f), sin_range(48, 60, game->render_time * 8.0f), make_rrr(0.66f), true, &game->font, zero, 0);
+		}
+
+		b8 want_to_reset = is_key_pressed(SDLK_r, true);
+		if(
+			do_button(S("Restart"), c_world_size * v2(0.87f, 0.82f), true) == e_button_result_left_click
+			|| is_key_pressed(SDLK_ESCAPE, true) || want_to_reset
+		) {
+			pop_state_transition(&game->state0, game->render_time, c_transition_time);
+			game->do_hard_reset = true;
+		}
+
+		{
+			s_render_flush_data data = make_render_flush_data(zero, zero);
+			data.projection = ortho;
+			data.blend_mode = e_blend_mode_normal;
+			data.depth_mode = e_depth_mode_no_read_yes_write;
+			render_flush(data, true, 0);
+		}
+	}
+
+	if(should_do_leaderboard_menu) {
+		s_render_flush_data data = make_render_flush_data(zero, zero);
+		data.projection = ortho;
+		data.blend_mode = e_blend_mode_normal;
+		data.depth_mode = e_depth_mode_no_read_yes_write;
+		render_flush(data, true, 0);
+	}
+
+	if(should_do_options_menu) {
+		game->speed = 0;
+		game->music_speed.target = 1;
+
+		s_v2 button_size = v2(600, 48);
+		s_container container = make_down_center_x_container(make_rect(wxy(0.0f, 0.05f), c_world_size), button_size, 32);
+
+		{
+			s_len_str text = format_text("Sound: %s", game->turn_off_all_sounds ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->turn_off_all_sounds);
+		}
+
+		{
+			s_len_str text = format_text("Music: %s", game->disable_music ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_music);
+		}
+
+		{
+			s_len_str text = format_text("Timer: %s", game->hide_timer ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->hide_timer);
+		}
+
+		{
+			s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
+		}
+
+		{
+			s_len_str text = format_text("Damage numbers: %s", game->disable_damage_numbers ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_damage_numbers);
+		}
+
+		{
+			s_len_str text = format_text("Gold numbers: %s", game->disable_gold_numbers ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_gold_numbers);
+		}
+
+		{
+			s_len_str text = format_text("Auto dash when 0 cooldown: %s", game->disable_auto_dash_when_no_cooldown ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_auto_dash_when_no_cooldown);
+		}
+
+		b8 escape = is_key_pressed(SDLK_ESCAPE, true);
+		if(do_button(S("Back"), wxy(0.87f, 0.92f), true) == e_button_result_left_click || escape) {
+			pop_state_transition(&game->state0, game->render_time, c_transition_time);
+		}
+
+		{
+			s_render_flush_data data = make_render_flush_data(zero, zero);
+			data.projection = ortho;
+			data.blend_mode = e_blend_mode_normal;
+			data.depth_mode = e_depth_mode_no_read_yes_write;
+			render_flush(data, true, 0);
+		}
+	}
+
+	if(should_do_play) {
+		game->speed = wanted_speed;
+		game->music_speed.target = 1;
+
+		handle_state(&hard_data->state1, game->render_time);
+
+		e_game_state1 state1 = (e_game_state1)get_state(&hard_data->state1);
+		switch(state1) {
+			xcase e_game_state1_default: {
+				do_game = true;
+			}
+			xcase e_game_state1_defeat: {
+				do_game = true;
+				do_defeat = true;
+				game->music_speed.target = 0.5f;
+			}
+		}
+	}
+
+	if(should_do_input_name_menu) {
+		game->speed = 0;
+		game->music_speed.target = 1;
+		s_input_name_state* state = &game->input_name_state;
+		float font_size = 36;
+		s_v2 pos = c_world_size * v2(0.5f, 0.4f);
+
+		int count_before = state->name.str.count;
+		b8 submitted = handle_string_input(&state->name, game->render_time);
+		int count_after = state->name.str.count;
+		if(count_before != count_after) {
+			play_sound(e_sound_key, zero);
+		}
+		if(submitted) {
+			b8 can_submit = true;
+			if(state->name.str.count < 2) {
+				can_submit = false;
+				cstr_into_builder(&state->error_str, "Name must have at least 2 characters!");
+			}
+			if(can_submit) {
+				state->error_str.count = 0;
+				#if defined(__EMSCRIPTEN__)
+				set_leaderboard_name(builder_to_len_str(&state->name.str));
+				#endif
+				{
+					s_len_str temp = builder_to_len_str(&state->name.str);
+					game->leaderboard_nice_name.count = 0;
+					builder_add(&game->leaderboard_nice_name, "%.*s", expand_str(temp));
+				}
+			}
+		}
+
+		draw_text(S("Victory!"), c_world_size * v2(0.5f, 0.1f), font_size, make_rrr(1), true, &game->font, zero, 0);
+		draw_text(S("Enter your name"), c_world_size * v2(0.5f, 0.2f), font_size, make_rrr(1), true, &game->font, zero, 0);
+		if(state->error_str.count > 0) {
+			draw_text(builder_to_len_str(&state->error_str), c_world_size * v2(0.5f, 0.3f), font_size, hex_to_rgb(0xD77870), true, &game->font, zero, 0);
+		}
+
+		if(state->name.str.count > 0) {
+			draw_text(builder_to_len_str(&state->name.str), pos, font_size, make_rrr(1), true, &game->font, zero, 0);
+		}
+
+		s_v2 full_text_size = get_text_size(builder_to_len_str(&state->name.str), &game->font, font_size);
+		s_v2 partial_text_size = get_text_size_with_count(builder_to_len_str(&state->name.str), &game->font, font_size, state->name.cursor.value, 0);
+		s_v2 cursor_pos = v2(
+			-full_text_size.x * 0.5f + pos.x + partial_text_size.x,
+			pos.y - font_size * 0.5f
+		);
+
+		s_v2 cursor_size = v2(15.0f, font_size);
+		float t = game->render_time - max(state->name.last_action_time, state->name.last_edit_time);
+		b8 blink = false;
+		constexpr float c_blink_rate = 0.75f;
+		if(t > 0.75f && fmodf(t, c_blink_rate) >= c_blink_rate / 2) {
+			blink = true;
+		}
+		float t2 = clamp(game->render_time - state->name.last_edit_time, 0.0f, 1.0f);
+		s_v4 color = lerp_color(hex_to_rgb(0xffdddd), multiply_rgb_clamped(hex_to_rgb(0xABC28F), 0.8f), 1 - powf(1 - t2, 3));
+		float extra_height = ease_out_elastic2_advanced(t2, 0, 0.75f, 20, 0);
+		cursor_size.y += extra_height;
+
+		if(!state->name.visual_pos_initialized) {
+			state->name.visual_pos_initialized = true;
+			state->name.cursor_visual_pos = cursor_pos;
+		}
+		else {
+			state->name.cursor_visual_pos = lerp_snap(state->name.cursor_visual_pos, cursor_pos, delta * 20);
+		}
+
+		if(!blink) {
+			draw_rect_topleft(state->name.cursor_visual_pos - v2(0.0f, extra_height / 2), cursor_size, color, 0);
+		}
+
+		s_render_flush_data data = make_render_flush_data(zero, zero);
+		data.projection = ortho;
+		data.blend_mode = e_blend_mode_normal;
+		data.depth_mode = e_depth_mode_no_read_no_write;
+		render_flush(data, true, 0);
 	}
 
 	if(do_game) {
