@@ -209,7 +209,6 @@ struct s_obj_mesh
 	s_obj_face face_arr[c_max_faces];
 };
 
-
 struct s_render_group
 {
 	int element_size;
@@ -217,7 +216,6 @@ struct s_render_group
 	e_texture texture_id;
 	e_mesh mesh_id;
 };
-
 
 struct s_glyph
 {

@@ -185,12 +185,12 @@ m_dll_export void init(s_platform_data* platform_data)
 	{
 		constexpr float c_size = 0.5f;
 		s_vertex vertex_arr[] = {
-			{v3(-c_size, -c_size, 0), v3(0, -1, 0), make_color(1), v2(0, 1)},
-			{v3(c_size, -c_size, 0), v3(0, -1, 0), make_color(1), v2(1, 1)},
-			{v3(c_size, c_size, 0), v3(0, -1, 0), make_color(1), v2(1, 0)},
-			{v3(-c_size, -c_size, 0), v3(0, -1, 0), make_color(1), v2(0, 1)},
-			{v3(c_size, c_size, 0), v3(0, -1, 0), make_color(1), v2(1, 0)},
-			{v3(-c_size, c_size, 0), v3(0, -1, 0), make_color(1), v2(0, 0)},
+			{v3(-c_size, -c_size, 0), v3(0, -1, 0), make_rrr(1), v2(0, 1)},
+			{v3(c_size, -c_size, 0), v3(0, -1, 0), make_rrr(1), v2(1, 1)},
+			{v3(c_size, c_size, 0), v3(0, -1, 0), make_rrr(1), v2(1, 0)},
+			{v3(-c_size, -c_size, 0), v3(0, -1, 0), make_rrr(1), v2(0, 1)},
+			{v3(c_size, c_size, 0), v3(0, -1, 0), make_rrr(1), v2(1, 0)},
+			{v3(-c_size, c_size, 0), v3(0, -1, 0), make_rrr(1), v2(0, 0)},
 		};
 		game->mesh_arr[e_mesh_quad] = make_mesh_from_vertices(vertex_arr, array_count(vertex_arr));
 	}
@@ -619,15 +619,17 @@ func void render(float interp_dt, float delta)
 		}
 	}
 
-	for(int i = 0; i < e_shader_count; i += 1) {
-		for(int j = 0; j < e_texture_count; j += 1) {
-			for(int k = 0; k < e_mesh_count; k += 1) {
-				game->render_group_index_arr[i][j][k] = -1;
+	for(int render_pass_i = 0; render_pass_i < c_render_pass_count; render_pass_i += 1) {
+		for(int i = 0; i < e_shader_count; i += 1) {
+			for(int j = 0; j < e_texture_count; j += 1) {
+				for(int k = 0; k < e_mesh_count; k += 1) {
+					game->render_pass_arr[render_pass_i].render_group_index_arr[i][j][k] = -1;
+				}
 			}
 		}
+		game->render_pass_arr[render_pass_i].render_group_arr.count = 0;
+		memset(game->render_pass_arr[render_pass_i].render_instance_count, 0, sizeof(game->render_pass_arr[render_pass_i].render_instance_count));
 	}
-	game->render_group_arr.count = 0;
-	memset(game->render_instance_count, 0, sizeof(game->render_instance_count));
 
 	s_hard_game_data* hard_data = &game->hard_data;
 	s_soft_game_data* soft_data = &game->soft_data;
@@ -683,12 +685,12 @@ func void render(float interp_dt, float delta)
 				add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
 			}
 
-			draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_color(1), true, &game->font, zero);
-			draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_color(0.6f), true, &game->font, zero);
+			draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
+			draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
 
 			if(c_on_web) {
 				s_v4 color = hsv_to_rgb(game->render_time * 360, 1, 1);
-				draw_text(S("Go fullscreen!\n             V"), wxy(0.9f, 0.93f), sin_range(32, 40, game->render_time * 8), color, true, &game->font, zero);
+				draw_text(S("Go fullscreen!\n             V"), wxy(0.9f, 0.93f), sin_range(32, 40, game->render_time * 8), color, true, &game->font, zero, 0);
 			}
 
 			{
@@ -696,7 +698,7 @@ func void render(float interp_dt, float delta)
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 
 		} break;
@@ -723,15 +725,15 @@ func void render(float interp_dt, float delta)
 				add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
 			}
 
-			draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_color(1), true, &game->font, zero);
-			draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_color(0.6f), true, &game->font, zero);
+			draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
+			draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
 
 			{
 				s_render_flush_data data = make_render_flush_data(zero, zero);
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 
 		} break;
@@ -748,7 +750,7 @@ func void render(float interp_dt, float delta)
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 
 		} break;
@@ -761,9 +763,9 @@ func void render(float interp_dt, float delta)
 			{
 				s_time_format data = update_count_to_time_format(game->update_count_at_win_time);
 				s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
-				draw_text(text, c_world_center * v2(1.0f, 0.2f), 64, make_color(1), true, &game->font, zero);
+				draw_text(text, c_world_center * v2(1.0f, 0.2f), 64, make_rrr(1), true, &game->font, zero, 0);
 
-				draw_text(S("Press R to restart..."), c_world_center * v2(1.0f, 0.4f), sin_range(48, 60, game->render_time * 8.0f), make_color(0.66f), true, &game->font, zero);
+				draw_text(S("Press R to restart..."), c_world_center * v2(1.0f, 0.4f), sin_range(48, 60, game->render_time * 8.0f), make_rrr(0.66f), true, &game->font, zero, 0);
 			}
 
 
@@ -781,7 +783,7 @@ func void render(float interp_dt, float delta)
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 
 		} break;
@@ -847,7 +849,7 @@ func void render(float interp_dt, float delta)
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_no_read_yes_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 		} break;
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		options end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -906,14 +908,14 @@ func void render(float interp_dt, float delta)
 				}
 			}
 
-			draw_text(S("Victory!"), c_world_size * v2(0.5f, 0.1f), font_size, make_color(1), true, &game->font, zero);
-			draw_text(S("Enter your name"), c_world_size * v2(0.5f, 0.2f), font_size, make_color(1), true, &game->font, zero);
+			draw_text(S("Victory!"), c_world_size * v2(0.5f, 0.1f), font_size, make_rrr(1), true, &game->font, zero, 0);
+			draw_text(S("Enter your name"), c_world_size * v2(0.5f, 0.2f), font_size, make_rrr(1), true, &game->font, zero, 0);
 			if(state->error_str.count > 0) {
-				draw_text(builder_to_len_str(&state->error_str), c_world_size * v2(0.5f, 0.3f), font_size, hex_to_rgb(0xD77870), true, &game->font, zero);
+				draw_text(builder_to_len_str(&state->error_str), c_world_size * v2(0.5f, 0.3f), font_size, hex_to_rgb(0xD77870), true, &game->font, zero, 0);
 			}
 
 			if(state->name.str.count > 0) {
-				draw_text(builder_to_len_str(&state->name.str), pos, font_size, make_color(1), true, &game->font, zero);
+				draw_text(builder_to_len_str(&state->name.str), pos, font_size, make_rrr(1), true, &game->font, zero, 0);
 			}
 
 			s_v2 full_text_size = get_text_size(builder_to_len_str(&state->name.str), &game->font, font_size);
@@ -944,14 +946,14 @@ func void render(float interp_dt, float delta)
 			}
 
 			if(!blink) {
-				draw_rect_topleft(state->name.cursor_visual_pos - v2(0.0f, extra_height / 2), cursor_size, color);
+				draw_rect_topleft(state->name.cursor_visual_pos - v2(0.0f, extra_height / 2), cursor_size, color, 0);
 			}
 
 			s_render_flush_data data = make_render_flush_data(zero, zero);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true);
+			render_flush(data, true, 0);
 
 		} break;
 	}
@@ -960,26 +962,14 @@ func void render(float interp_dt, float delta)
 		b8 do_game_ui = true;
 		auto entity_arr = &soft_data->entity_arr;
 
-		s_entity* player = &entity_arr->data[0];
-
-		s_v2 player_pos = lerp_v2(player->prev_pos, player->pos, interp_dt);
-
-		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
-			data.projection = ortho;
-			data.blend_mode = e_blend_mode_normal;
-			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true);
-		}
-
-		update_particles(delta, true);
+		update_particles(delta, true, 0);
 
 		{
 			s_render_flush_data data = make_render_flush_data(zero, zero);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_additive;
 			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true);
+			render_flush(data, true, 0);
 		}
 
 		if(do_game_ui) {
@@ -995,7 +985,7 @@ func void render(float interp_dt, float delta)
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_read_and_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 
 			{
@@ -1003,7 +993,7 @@ func void render(float interp_dt, float delta)
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_read_and_write;
-				render_flush(data, true);
+				render_flush(data, true, 0);
 			}
 
 			if(game->tooltip.count > 0) {
@@ -1015,14 +1005,14 @@ func void render(float interp_dt, float delta)
 				rect_pos = topleft_to_bottomleft_mouse(rect_pos, size, g_mouse);
 				rect_pos = prevent_offscreen(rect_pos, size);
 				s_v2 text_pos = rect_pos + v2(8);
-				draw_rect_topleft(rect_pos, size, make_color(0.0f, 0.95f));
-				draw_text(game->tooltip, text_pos, font_size, make_color(1), false, &game->font, zero);
+				draw_rect_topleft(rect_pos, size, make_ra(0.0f, 0.95f), 0);
+				draw_text(game->tooltip, text_pos, font_size, make_rrr(1), false, &game->font, zero, 0);
 				{
 					s_render_flush_data data = make_render_flush_data(zero, zero);
 					data.projection = ortho;
 					data.blend_mode = e_blend_mode_normal;
 					data.depth_mode = e_depth_mode_no_read_no_write;
-					render_flush(data, true);
+					render_flush(data, true, 0);
 				}
 			}
 			game->tooltip = zero;
@@ -1041,21 +1031,21 @@ func void render(float interp_dt, float delta)
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		cheat menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	}
 	else {
-		update_particles(delta, false);
+		update_particles(delta, false, 0);
 	}
 
 	if(do_defeat) {
 
-		draw_rect_topleft(v2(0), c_world_size, make_color(0, 0.75f));
-		draw_text(S("Defeat"), wxy(0.5f, 0.4f) + rand_v2_11(&game->rng) * 8, 128, make_color(1, 0.2f, 0.2f), true, &game->font, zero);
-		draw_text(S("Press R to try again"), wxy(0.5f, 0.55f), sin_range(48, 64, game->render_time * 8), make_color(1), true, &game->font, zero);
+		draw_rect_topleft(v2(0), c_world_size, make_ra(0, 0.75f), 0);
+		draw_text(S("Defeat"), wxy(0.5f, 0.4f) + rand_v2_11(&game->rng) * 8, 128, make_rgb(1, 0.2f, 0.2f), true, &game->font, zero, 0);
+		draw_text(S("Press R to try again"), wxy(0.5f, 0.55f), sin_range(48, 64, game->render_time * 8), make_rrr(1), true, &game->font, zero, 0);
 
 		{
 			s_render_flush_data data = make_render_flush_data(zero, zero);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true);
+			render_flush(data, true, 0);
 		}
 	}
 
@@ -1071,8 +1061,8 @@ func void render(float interp_dt, float delta)
 			}
 			s_instance_data data = zero;
 			data.model = fullscreen_m4();
-			data.color = make_color(0.0f, 0, 0, alpha);
-			add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad);
+			data.color = make_rgba(0.0f, 0, 0, alpha);
+			add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad, 0);
 		}
 
 		{
@@ -1080,7 +1070,7 @@ func void render(float interp_dt, float delta)
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true);
+			render_flush(data, true, 0);
 		}
 	}
 
@@ -1136,23 +1126,23 @@ func void on_gl_error(const char* expr, char* file, int line, int error)
 	#endif
 }
 
-func void draw_rect(s_v2 pos, s_v2 size, s_v4 color)
+func void draw_rect(s_v2 pos, s_v2 size, s_v4 color, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, 0));
 	data.model = m4_multiply(data.model, m4_scale(v3(size, 1)));
 	data.color = color;
 
-	add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad);
+	add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad, render_pass_index);
 }
 
-func void draw_rect_topleft(s_v2 pos, s_v2 size, s_v4 color)
+func void draw_rect_topleft(s_v2 pos, s_v2 size, s_v4 color, int render_pass_index)
 {
 	pos += size * 0.5f;
-	draw_rect(pos, size, color);
+	draw_rect(pos, size, color, render_pass_index);
 }
 
-func void draw_texture_screen(s_v2 pos, s_v2 size, s_v4 color, e_texture texture_id, e_shader shader_id, s_v2 uv_min, s_v2 uv_max, s_draw_data draw_data)
+func void draw_texture_screen(s_v2 pos, s_v2 size, s_v4 color, e_texture texture_id, e_shader shader_id, s_v2 uv_min, s_v2 uv_max, s_draw_data draw_data, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, draw_data.z));
@@ -1161,22 +1151,22 @@ func void draw_texture_screen(s_v2 pos, s_v2 size, s_v4 color, e_texture texture
 	data.uv_min = uv_min;
 	data.uv_max = uv_max;
 
-	add_to_render_group(data, shader_id, texture_id, e_mesh_quad);
+	add_to_render_group(data, shader_id, texture_id, e_mesh_quad, render_pass_index);
 }
 
-func void draw_mesh(e_mesh mesh_id, s_m4 model, s_v4 color, e_shader shader_id)
+func void draw_mesh(e_mesh mesh_id, s_m4 model, s_v4 color, e_shader shader_id, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = model;
 	data.color = color;
-	add_to_render_group(data, shader_id, e_texture_white, mesh_id);
+	add_to_render_group(data, shader_id, e_texture_white, mesh_id, render_pass_index);
 }
 
-func void draw_mesh(e_mesh mesh_id, s_v3 pos, s_v3 size, s_v4 color, e_shader shader_id)
+func void draw_mesh(e_mesh mesh_id, s_v3 pos, s_v3 size, s_v4 color, e_shader shader_id, int render_pass_index)
 {
 	s_m4 model = m4_translate(pos);
 	model = m4_multiply(model, m4_scale(size));
-	draw_mesh(mesh_id, model, color, shader_id);
+	draw_mesh(mesh_id, model, color, shader_id, render_pass_index);
 }
 
 func void bind_framebuffer(u32 fbo)
@@ -1201,9 +1191,13 @@ func void clear_framebuffer_depth(u32 fbo)
 	glClear(GL_DEPTH_BUFFER_BIT);
 }
 
-func void render_flush(s_render_flush_data data, b8 reset_render_count)
+func void render_flush(s_render_flush_data data, b8 reset_render_count, int render_pass_index)
 {
 	bind_framebuffer(data.fbo.id);
+
+	assert(render_pass_index >= 0);
+	assert(render_pass_index < c_render_pass_count);
+	s_render_pass* render_pass = &game->render_pass_arr[render_pass_index];
 
 	if(data.fbo.id == 0) {
 		s_rect letterbox = do_letterbox(v2(g_platform_data->window_size), c_world_size);
@@ -1233,11 +1227,11 @@ func void render_flush(s_render_flush_data data, b8 reset_render_count)
 		gl(glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(s_uniform_data), &uniform_data));
 	}
 
-	foreach_val(group_i, group, game->render_group_arr) {
+	foreach_val(group_i, group, render_pass->render_group_arr) {
 		s_mesh* mesh = &game->mesh_arr[group.mesh_id];
-		int* instance_count = &game->render_instance_count[group.shader_id][group.texture_id][group.mesh_id];
+		int* instance_count = &render_pass->render_instance_count[group.shader_id][group.texture_id][group.mesh_id];
 		assert(*instance_count > 0);
-		void* instance_data = game->render_instance_arr[group.shader_id][group.texture_id][group.mesh_id];
+		void* instance_data = render_pass->render_instance_arr[group.shader_id][group.texture_id][group.mesh_id];
 
 		gl(glUseProgram(game->shader_arr[group.shader_id].id));
 
@@ -1259,8 +1253,8 @@ func void render_flush(s_render_flush_data data, b8 reset_render_count)
 		gl(glBufferSubData(GL_ARRAY_BUFFER, 0, group.element_size * *instance_count, instance_data));
 		gl(glDrawArraysInstanced(GL_TRIANGLES, 0, mesh->vertex_count, *instance_count));
 		if(reset_render_count) {
-			game->render_group_arr.remove_and_swap(group_i);
-			game->render_group_index_arr[group.shader_id][group.texture_id][group.mesh_id] = -1;
+			render_pass->render_group_arr.remove_and_swap(group_i);
+			render_pass->render_group_index_arr[group.shader_id][group.texture_id][group.mesh_id] = -1;
 			group_i -= 1;
 			*instance_count = 0;
 		}
@@ -1268,8 +1262,12 @@ func void render_flush(s_render_flush_data data, b8 reset_render_count)
 }
 
 template <typename t>
-func void add_to_render_group(t data, e_shader shader_id, e_texture texture_id, e_mesh mesh_id)
+func void add_to_render_group(t data, e_shader shader_id, e_texture texture_id, e_mesh mesh_id, int render_pass_index)
 {
+	assert(render_pass_index >= 0);
+	assert(render_pass_index < c_render_pass_count);
+	s_render_pass* render_pass = &game->render_pass_arr[render_pass_index];
+
 	s_render_group render_group = zero;
 	render_group.shader_id = shader_id;
 	render_group.texture_id = texture_id;
@@ -1278,14 +1276,14 @@ func void add_to_render_group(t data, e_shader shader_id, e_texture texture_id, 
 
 	s_mesh* mesh = &game->mesh_arr[render_group.mesh_id];
 
-	int* render_group_index = &game->render_group_index_arr[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
+	int* render_group_index = &render_pass->render_group_index_arr[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
 	if(*render_group_index < 0) {
-		game->render_group_arr.add(render_group);
-		*render_group_index = game->render_group_arr.count - 1;
+		render_pass->render_group_arr.add(render_group);
+		*render_group_index = render_pass->render_group_arr.count - 1;
 	}
-	int* count = &game->render_instance_count[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
-	int* max_elements = &game->render_instance_max_elements[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
-	t* ptr = (t*)game->render_instance_arr[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
+	int* count = &render_pass->render_instance_count[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
+	int* max_elements = &render_pass->render_instance_max_elements[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
+	t* ptr = (t*)render_pass->render_instance_arr[render_group.shader_id][render_group.texture_id][render_group.mesh_id];
 	b8 expand = *max_elements <= *count;
 	b8 get_new_ptr = *count <= 0 || expand;
 	int new_max_elements = *max_elements;
@@ -1307,7 +1305,7 @@ func void add_to_render_group(t data, e_shader shader_id, e_texture texture_id, 
 		if(*count > 0) {
 			memcpy(temp, ptr, *count * sizeof(t));
 		}
-		game->render_instance_arr[render_group.shader_id][render_group.texture_id][render_group.mesh_id] = (void*)temp;
+		render_pass->render_instance_arr[render_group.shader_id][render_group.texture_id][render_group.mesh_id] = (void*)temp;
 		ptr = temp;
 	}
 	*max_elements = new_max_elements;
@@ -1408,10 +1406,10 @@ func e_button_result do_button_ex(s_len_str text, s_v2 pos, s_v2 size, b8 center
 	b8 do_tooltip = false;
 	b8 hovered = mouse_vs_rect_center(g_mouse, pos, size);
 	s_v4 color = optional.button_color;
-	s_v4 text_color = make_color(1);
+	s_v4 text_color = make_rrr(1);
 	if(optional.disabled) {
 		color = multiply_rgb(color, 0.6f);
-		text_color = make_color(0.7f);
+		text_color = make_rrr(0.7f);
 	}
 	if(hovered) {
 		do_tooltip = true;
@@ -1438,10 +1436,10 @@ func e_button_result do_button_ex(s_len_str text, s_v2 pos, s_v2 size, b8 center
 		data.model = m4_translate(v3(pos, 0));
 		data.model = m4_multiply(data.model, m4_scale(v3(size, 1)));
 		data.color = color;
-		add_to_render_group(data, e_shader_button, e_texture_white, e_mesh_quad);
+		add_to_render_group(data, e_shader_button, e_texture_white, e_mesh_quad, optional.render_pass_index);
 	}
 
-	draw_text(text, pos, optional.font_size, text_color, true, &game->font, {.z = 1});
+	draw_text(text, pos, optional.font_size, text_color, true, &game->font, {.z = 1}, optional.render_pass_index);
 
 	if(do_tooltip && optional.tooltip.count > 0) {
 		game->tooltip = optional.tooltip;
@@ -1589,10 +1587,10 @@ func void do_leaderboard()
 
 	{
 		if(!game->leaderboard_received) {
-			draw_text(S("Getting leaderboard..."), c_world_center, 48, make_color(0.66f), true, &game->font, zero);
+			draw_text(S("Getting leaderboard..."), c_world_center, 48, make_rrr(0.66f), true, &game->font, zero, 0);
 		}
 		else if(game->leaderboard_arr.count <= 0) {
-			draw_text(S("No scores yet :("), c_world_center, 48, make_color(0.66f), true, &game->font, zero);
+			draw_text(S("No scores yet :("), c_world_center, 48, make_rrr(0.66f), true, &game->font, zero, 0);
 		}
 
 		s_v2 pos = c_world_center * v2(1.0f, 0.7f);
@@ -1606,7 +1604,7 @@ func void do_leaderboard()
 		for(int entry_i = start; entry_i < end; entry_i += 1) {
 			s_leaderboard_entry entry = game->leaderboard_arr[entry_i];
 			s_time_format data = update_count_to_time_format(entry.time);
-			s_v4 color = make_color(0.8f);
+			s_v4 color = make_rrr(0.8f);
 			if(builder_equals(&game->leaderboard_public_uid, &entry.internal_name)) {
 				color = hex_to_rgb(0xD3A861);
 			}
@@ -1615,9 +1613,9 @@ func void do_leaderboard()
 				name = entry.nice_name.str;
 			}
 			constexpr float font_size = 28;
-			draw_text(format_text("%2i %s", entry_i + 1, name), v2(c_world_size.x * 0.1f, pos.y - font_size * 0.75f), font_size, color, false, &game->font, zero);
+			draw_text(format_text("%2i %s", entry_i + 1, name), v2(c_world_size.x * 0.1f, pos.y - font_size * 0.75f), font_size, color, false, &game->font, zero, 0);
 			s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
-			draw_text(text, v2(c_world_size.x * 0.5f, pos.y - font_size * 0.75f), font_size, color, false, &game->font, zero);
+			draw_text(text, v2(c_world_size.x * 0.5f, pos.y - font_size * 0.75f), font_size, color, false, &game->font, zero, 0);
 			pos.y += font_size * 1.5f;
 		}
 		{
@@ -1701,12 +1699,12 @@ func b8 check_action(float curr_time, float timestamp, float grace)
 	return result;
 }
 
-func void draw_atlas(s_v2 pos, s_v2 size, s_v2i index, s_v4 color)
+func void draw_atlas(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, int render_pass_index)
 {
-	draw_atlas_ex(pos, size, index, color, 0, zero);
+	draw_atlas_ex(pos, size, index, color, 0, zero, render_pass_index);
 }
 
-func void draw_atlas_ex(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rotation, s_draw_data draw_data)
+func void draw_atlas_ex(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rotation, s_draw_data draw_data, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, draw_data.z));
@@ -1728,26 +1726,26 @@ func void draw_atlas_ex(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rota
 		swap(&data.uv_min.x, &data.uv_max.x);
 	}
 
-	add_to_render_group(data, e_shader_flat_remove_black, e_texture_atlas, e_mesh_quad);
+	add_to_render_group(data, e_shader_flat_remove_black, e_texture_atlas, e_mesh_quad, render_pass_index);
 }
 
-func void draw_atlas_topleft(s_v2 pos, s_v2 size, s_v2i index, s_v4 color)
+func void draw_atlas_topleft(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, int render_pass_index)
 {
 	pos += size * 0.5f;
-	draw_atlas(pos, size, index, color);
+	draw_atlas(pos, size, index, color, render_pass_index);
 }
 
-func void draw_circle(s_v2 pos, float radius, s_v4 color)
+func void draw_circle(s_v2 pos, float radius, s_v4 color, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, 0));
 	data.model = m4_multiply(data.model, m4_scale(v3(radius * 2, radius * 2, 1)));
 	data.color = color;
 
-	add_to_render_group(data, e_shader_circle, e_texture_white, e_mesh_quad);
+	add_to_render_group(data, e_shader_circle, e_texture_white, e_mesh_quad, render_pass_index);
 }
 
-func void draw_light(s_v2 pos, float radius, s_v4 color, float smoothness)
+func void draw_light(s_v2 pos, float radius, s_v4 color, float smoothness, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, 0));
@@ -1755,7 +1753,7 @@ func void draw_light(s_v2 pos, float radius, s_v4 color, float smoothness)
 	data.color = color;
 	data.mix_weight = smoothness;
 
-	add_to_render_group(data, e_shader_light, e_texture_white, e_mesh_quad);
+	add_to_render_group(data, e_shader_light, e_texture_white, e_mesh_quad, render_pass_index);
 }
 
 func void do_screen_shake(float intensity)
@@ -1779,12 +1777,12 @@ func s_particle_emitter_a make_emitter_a()
 	result.speed = 128;
 	{
 		s_particle_color color = zero;
-		color.color = make_color(1);
+		color.color = make_rrr(1);
 		result.color_arr.add(color);
 	}
 	{
 		s_particle_color color = zero;
-		color.color = make_color(0.0f);
+		color.color = make_rrr(0.0f);
 		color.percent = 1;
 		result.color_arr.add(color);
 	}
@@ -1954,15 +1952,15 @@ func void radix_sort_32(t* source, u32 count, F get_radix, s_linear_arena* arena
 	}
 }
 
-func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha)
+func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha, int render_pass_index)
 {
 	pos += size * 0.5f;
-	draw_atlas_ex(pos, size, v2i(124, 42), make_color(1, alpha), 0, zero);
+	draw_atlas_ex(pos, size, v2i(124, 42), make_ra(1, alpha), 0, zero, render_pass_index);
 	s_len_str str = format_text("%c", to_upper_case(c));
 	pos.x -= size.x * 0.025f;
 	pos.y -= size.x * 0.05f;
 	s_v4 color = set_alpha(c_key_color, alpha);
-	draw_text(str, pos, size.x, color, true, &game->font, {.z = 1});
+	draw_text(str, pos, size.x, color, true, &game->font, {.z = 1}, render_pass_index);
 }
 
 func void add_multiplicative_light(s_v2 pos, float radius, s_v4 color, float smoothness)

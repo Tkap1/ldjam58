@@ -155,7 +155,7 @@ func s_ply_mesh parse_ply_mesh(char* path, s_linear_arena* arena)
 				temp += 1;
 			}
 			else {
-				result.vertex_arr[i].color = make_color(1);
+				result.vertex_arr[i].color = make_rrr(1);
 			}
 			memcpy(&result.vertex_arr[i].uv, temp, sizeof(s_v2));
 			temp += sizeof(s_v2);
@@ -414,7 +414,7 @@ func s_font load_font_from_file(char* file, int font_size, s_linear_arena* arena
 	return font;
 }
 
-func s_v2 draw_text(s_len_str text, s_v2 in_pos, float font_size, s_v4 color, b8 centered, s_font* font, s_draw_data draw_data)
+func s_v2 draw_text(s_len_str text, s_v2 in_pos, float font_size, s_v4 color, b8 centered, s_font* font, s_draw_data draw_data, int render_pass_index)
 {
 	float scale = font->scale * (font_size / font->size);
 
@@ -464,7 +464,7 @@ func s_v2 draw_text(s_len_str text, s_v2 in_pos, float font_size, s_v4 color, b8
 
 			s_v4 temp_color = it.color;
 			temp_color.a = color.a;
-			draw_texture_screen(tpos.xy, draw_size, temp_color, e_texture_font, e_shader_text, uv_min, uv_max, draw_data);
+			draw_texture_screen(tpos.xy, draw_size, temp_color, e_texture_font, e_shader_text, uv_min, uv_max, draw_data, render_pass_index);
 
 			// draw_generic(game_renderer, &t, render_pass, render_data.shader, font->texture.game_id, e_mesh_rect);
 
@@ -491,7 +491,7 @@ func s_v2 get_text_size_with_count(s_len_str in_text, s_font* font, float font_s
 
 	s_len_str text = substr_from_to_exclusive(in_text, 0, count);
 	s_text_iterator it = {};
-	while(iterate_text(&it, text, make_color(0))) {
+	while(iterate_text(&it, text, make_rrr(0))) {
 		for(int char_i = 0; char_i < it.text.count; char_i++) {
 			char c = it.text[char_i];
 			s_glyph glyph = font->glyph_arr[c];
@@ -544,7 +544,7 @@ func b8 iterate_text(s_text_iterator* it, s_len_str text, s_v4 color)
 			float red = hex_str_to_int(red_str) / 255.0f;
 			float green = hex_str_to_int(green_str) / 255.0f;
 			float blue = hex_str_to_int(blue_str) / 255.0f;
-			s_v4 temp_color = make_color(red, green, blue);
+			s_v4 temp_color = make_rgb(red, green, blue);
 			it->color_stack.add(temp_color);
 
 			if(index == it->index) {
@@ -851,7 +851,7 @@ func s_v2 wcxy(float x, float y)
 	return result;
 }
 
-func void update_particles(float delta, b8 do_draw)
+func void update_particles(float delta, b8 do_draw, int render_pass_index)
 {
 	s_soft_game_data* soft_data = &game->soft_data;
 
@@ -957,7 +957,7 @@ func void update_particles(float delta, b8 do_draw)
 			data.model *= m4_scale(v3(radius, radius, 1));
 			// scale_m4_by_radius(&data.model, radius);
 			data.color = color;
-			add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad);
+			add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad, render_pass_index);
 		}
 		if(time_data.percent >= 1) {
 			soft_data->particle_arr.remove_and_swap(particle_i);

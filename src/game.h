@@ -176,6 +176,7 @@ struct s_button_data
 {
 	b8 disabled;
 	b8 mute_click_sound;
+	int render_pass_index;
 	float font_size = 32;
 	s_len_str tooltip;
 	s_v4 button_color = {0.25f, 0.25f, 0.25f, 1.0f};
@@ -239,6 +240,15 @@ struct s_light
 	float radius;
 	float smoothness;
 	s_v4 color;
+};
+
+struct s_render_pass
+{
+	int render_instance_count[e_shader_count][e_texture_count][e_mesh_count];
+	int render_instance_max_elements[e_shader_count][e_texture_count][e_mesh_count];
+	int render_group_index_arr[e_shader_count][e_texture_count][e_mesh_count];
+	void* render_instance_arr[e_shader_count][e_texture_count][e_mesh_count];
+	s_list<s_render_group, 128> render_group_arr;
 };
 
 struct s_game
@@ -316,11 +326,7 @@ struct s_game
 	s_hard_game_data hard_data;
 	s_soft_game_data soft_data;
 
-	int render_instance_count[e_shader_count][e_texture_count][e_mesh_count];
-	int render_instance_max_elements[e_shader_count][e_texture_count][e_mesh_count];
-	int render_group_index_arr[e_shader_count][e_texture_count][e_mesh_count];
-	void* render_instance_arr[e_shader_count][e_texture_count][e_mesh_count];
-	s_list<s_render_group, 128> render_group_arr;
+	s_render_pass render_pass_arr[c_render_pass_count];
 };
 
 
