@@ -75,9 +75,22 @@ func b8 are_any_adjacent_chunks_unlocked(s_v2i index);
 func void unlock_chunk_v2i(s_v2i index);
 func int get_chunk_unlock_cost(s_v2i index);
 func s_v2 get_chunk_center(s_v2i index);
-func b8 can_afford(s64 currency, s64 cost);
-func void add_gold(s64 gold);
+func b8 can_afford(int currency, int cost);
+func void add_currency(int currency);
+func void add_raw_currency(int currency);
 func s_rect get_camera_bounds(s_m4 view_inv);
+func s_v2i chunk_index_from_pos(s_v2 pos);
+func s_v2i tile_index_from_pos(s_v2 pos);
+func void place_machine(s_v2i tile_index, e_machine machine);
+func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine machine, int currency);
+func s_v2i chunk_index_from_tile_index(s_v2i tile_index);
+func b8 is_machine_unlocked(e_machine machine);
+func b8 is_resource_tile(e_tile tile);
+func int get_machine_cost(e_machine machine);
+func void remove_machine(s_v2i tile_index);
+func void sell_machine(s_v2i tile_index, e_machine machine);
+func s_len_str get_research_tooltip(e_research research);
+func s_len_str get_machine_tooltip(e_machine machine);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

@@ -30,6 +30,7 @@ global constexpr s_v2 c_tile_size_v = {c_tile_size, c_tile_size};
 global constexpr int c_chunk_size = 48;
 global constexpr int c_chunk_count = c_max_tiles / c_chunk_size;
 global constexpr int c_starting_chunk = c_chunk_count / 2;
+global constexpr int c_biggest_machine_tile_size = 8;
 
 global constexpr float c_game_speed_arr[] = {
 	0.0f, 0.01f, 0.1f, 0.25f, 0.5f,

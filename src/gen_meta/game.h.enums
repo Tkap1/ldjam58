@@ -1,14 +1,21 @@
-enum e_upgrade
+enum e_machine
 {
-	e_upgrade_damage,
-	e_upgrade_speed,
-	e_upgrade_knockback,
-	e_upgrade_range,
-	e_upgrade_dash_cooldown,
-	e_upgrade_max_lives,
-	e_upgrade_lightning_bolt,
-	e_upgrade_more_hits_per_attack,
-	e_upgrade_auto_attack,
-	e_upgrade_count,
+	e_machine_none,
+	e_machine_collector_1,
+	e_machine_collector_2,
+	e_machine_collector_3,
+	e_machine_processor_1,
+	e_machine_research,
+	e_machine_count,
+};
+
+enum e_research
+{
+	e_research_player_speed_1,
+	e_research_player_speed_2,
+	e_research_player_speed_3,
+	e_research_collector_2,
+	e_research_collector_3,
+	e_research_count,
 };
 

@@ -221,11 +221,97 @@ struct s_input
 enum e_tile : u8
 {
 	e_tile_none,
-	e_tile_copper,
+	e_tile_resource_1,
+	e_tile_resource_2,
+	e_tile_resource_3,
+};
+
+data_enum(e_machine,
+	s_machine_data
+	g_machine_data
+
+	none {
+
+	}
+
+	collector_1 {
+		.requires_resource = true,
+		.size = 2,
+		.cost = 10,
+		.atlas_index = {3, 0},
+	}
+
+	collector_2 {
+		.requires_resource = true,
+		.size = 2,
+		.cost = 200,
+		.atlas_index = {7, 0},
+	}
+
+	collector_3 {
+		.requires_resource = true,
+		.size = 2,
+		.cost = 1000,
+	}
+
+	processor_1 {
+		.size = 3,
+		.cost = 20,
+		.atlas_index = {4, 0},
+	}
+
+	research {
+		.size = 3,
+		.cost = 30,
+		.atlas_index = {5, 0},
+	}
+)
+
+struct s_machine_data
+{
+	b8 requires_resource;
+	int size;
+	int cost;
+	s_v2i atlas_index;
+};
+
+data_enum(e_research,
+	s_research_data
+	g_research_data
+
+	player_speed_1 {
+		.cost = 20,
+		.value = 20
+	}
+	player_speed_2 {
+		.requirement = maybe(e_research_player_speed_1),
+		.cost = 100,
+		.value = 60,
+	}
+	player_speed_3 {
+		.requirement = maybe(e_research_player_speed_2),
+		.cost = 1000,
+		.value = 100,
+	}
+	collector_2 {
+		.cost = 100,
+	}
+	collector_3 {
+		.requirement = maybe(e_research_collector_2),
+		.cost = 1000,
+	}
+)
+
+struct s_research_data
+{
+	s_maybe<e_research> requirement;
+	int cost;
+	float value;
 };
 
 struct s_soft_game_data
 {
+	s_maybe<float> open_inventory_timestamp;
 	s_input frame_input;
 	int frames_to_freeze;
 	s_frame_data frame_data;
@@ -241,10 +327,18 @@ struct s_soft_game_data
 
 	s_list<s_timed_msg, 8> timed_msg_arr;
 
-	s64 currency;
+	int currency;
+	int raw_currency;
 
 	e_tile natural_terrain_arr[c_max_tiles][c_max_tiles];
+	e_machine machine_arr[c_max_tiles][c_max_tiles];
 	b8 purchased_chunk_arr[c_chunk_count][c_chunk_count];
+	s_maybe<e_machine> machine_to_place;
+	int machine_count_arr[e_machine_count];
+	int process_ticks;
+	s_maybe<e_research> current_research;
+	b8 research_completed_arr[e_research_count];
+	int spent_on_research_arr[e_research_count];
 };
 
 struct s_hard_game_data
@@ -350,4 +444,4 @@ struct s_game
 
 
 #include "gen_meta/game.cpp.funcs"
-// #include "gen_meta/game.h.globals"
+#include "gen_meta/game.h.globals"

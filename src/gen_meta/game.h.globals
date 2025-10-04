@@ -1,61 +1,57 @@
-global constexpr s_upgrade_data g_upgrade_data[e_upgrade_count] = {
+global constexpr s_machine_data g_machine_data[e_machine_count] = {
 	{
-		.name = S("Damage"),
+
+	},
+	{
+		.requires_resource = true,
+		.size = 2,
 		.cost = 10,
-		.extra_cost_per_level = 5,
-		.stat_boost = 50,
+		.atlas_index = {3, 0},
 	},
 	{
-		.name = S("Speed"),
-		.cost = 10,
-		.extra_cost_per_level = 5,
-		.stat_boost = 20,
-		.max_upgrades = 5,
-	},
-	{
-		.name = S("Knockback"),
-		.cost = 10,
-		.extra_cost_per_level = 5,
-		.stat_boost = 20,
-	},
-	{
-		.name = S("Attack range"),
-		.cost = 20,
-		.extra_cost_per_level = 5,
-		.stat_boost = 20,
-	},
-	{
-		.name = S("Dash cooldown"),
-		.cost = 30,
-		.extra_cost_per_level = 20,
-		.stat_boost = 20,
-		.max_upgrades = 5,
-	},
-	{
-		.name = S("Lives"),
-		.cost = 30,
-		.extra_cost_per_level = 5,
-		.stat_boost = 5,
-		.max_upgrades = 4,
-	},
-	{
-		.name = S("Lightning bolt"),
-		.cost = 50,
-		.extra_cost_per_level = 30,
-		.stat_boost = 50,
-	},
-	{
-		.name = S("Multistrike"),
-		.cost = 100,
-		.extra_cost_per_level = 200,
-		.stat_boost = 1,
-		.max_upgrades = 4,
-	},
-	{
-		.name = S("Auto attack"),
+		.requires_resource = true,
+		.size = 2,
 		.cost = 200,
-		.extra_cost_per_level = 100,
-		.stat_boost = 25,
+		.atlas_index = {7, 0},
+	},
+	{
+		.requires_resource = true,
+		.size = 2,
+		.cost = 1000,
+	},
+	{
+		.size = 3,
+		.cost = 20,
+		.atlas_index = {4, 0},
+	},
+	{
+		.size = 3,
+		.cost = 30,
+		.atlas_index = {5, 0},
+	},
+};
+
+global constexpr s_research_data g_research_data[e_research_count] = {
+	{
+		.cost = 20,
+		.value = 20
+	},
+	{
+		.requirement = maybe(e_research_player_speed_1),
+		.cost = 100,
+		.value = 60,
+	},
+	{
+		.requirement = maybe(e_research_player_speed_2),
+		.cost = 1000,
+		.value = 100,
+	},
+	{
+		.cost = 100,
+	},
+	{
+		.requirement = maybe(e_research_collector_2),
+		.cost = 1000,
 	},
 };
 

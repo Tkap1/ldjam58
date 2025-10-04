@@ -46,3 +46,14 @@ could have a machine that collects without the need for resources, but it does s
 --------------------------------------------------------------------------------------------------------------------------------------------
 leaderboard id
 reenable loeaderboard call inside init
+
+break is bad on canweplacemachine
+
+maybe you collect cards? and they give you stuff. so they serve as the progression and the upgrades??
+
+tooltips for machines
+
+power??
+
+research building? you choose some research you want, and the more research buildings you have, the faster it completes
+	research just cost currency, so what the buildings do is consume currency at some rate
