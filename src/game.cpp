@@ -594,6 +594,17 @@ func void update()
 						resource_count = 4;
 					}
 					for(int i = 0; i < resource_count; i += 1) {
+						s_list<e_tile, e_tile_count> possible_resource_arr = zero;
+						possible_resource_arr.add(e_tile_resource_1);
+						int distance = abs(chunk_x - c_starting_chunk) + abs(chunk_y - c_starting_chunk);
+						if(distance >= 2) {
+							possible_resource_arr.add(e_tile_resource_2);
+						}
+						if(distance >= 5) {
+							possible_resource_arr.add(e_tile_resource_3);
+						}
+						int rand_index = rand_range_ie(&game->rng, 0, possible_resource_arr.count);
+						e_tile chosen_resource = possible_resource_arr[rand_index];
 						int resource_size = rand_range_ii(&game->rng, 10, 60);
 						int min_x = chunk_x * c_chunk_size;
 						int max_x = min_x + c_chunk_size;
@@ -608,7 +619,7 @@ func void update()
 							if(!is_2d_index_out_of_bounds(pos, v2i(c_max_tiles, c_max_tiles))) {
 								s_v2i chunk_index = chunk_index_from_tile_index(pos);
 								if(soft_data->natural_terrain_arr[pos.y][pos.x] == e_tile_none && chunk_index == v2i(chunk_x, chunk_y)) {
-									soft_data->natural_terrain_arr[pos.y][pos.x] = e_tile_resource_1;
+									soft_data->natural_terrain_arr[pos.y][pos.x] = chosen_resource;
 									placed += 1;
 								}
 							}
@@ -675,7 +686,31 @@ func void update()
 			}
 
 			{
+				int to_add = soft_data->machine_count_arr[e_machine_collector_2] * 100;
+				add_raw_currency(to_add);
+			}
+
+			{
+				int to_add = soft_data->machine_count_arr[e_machine_collector_3] * 100 * 100;
+				add_raw_currency(to_add);
+			}
+
+			{
 				int could_process = soft_data->machine_count_arr[e_machine_processor_1] * 2;
+				int will_process = min(could_process, soft_data->raw_currency);
+				add_raw_currency(-will_process);
+				add_currency(will_process);
+			}
+
+			{
+				int could_process = soft_data->machine_count_arr[e_machine_processor_2] * 200;
+				int will_process = min(could_process, soft_data->raw_currency);
+				add_raw_currency(-will_process);
+				add_currency(will_process);
+			}
+
+			{
+				int could_process = soft_data->machine_count_arr[e_machine_processor_3] * 20000;
 				int will_process = min(could_process, soft_data->raw_currency);
 				add_raw_currency(-will_process);
 				add_currency(will_process);
@@ -684,9 +719,14 @@ func void update()
 			if(soft_data->current_research.valid) {
 				int could_process = soft_data->machine_count_arr[e_machine_research] * 3;
 				int will_process = min(could_process, (int)soft_data->currency);
+				if(game->free_research) {
+					will_process = 10000000;
+				}
 				int research_left = g_research_data[soft_data->current_research.value].cost - soft_data->spent_on_research_arr[soft_data->current_research.value];
 				will_process = min(will_process, research_left);
-				add_currency(-will_process);
+				if(!game->free_research) {
+					add_currency(-will_process);
+				}
 				soft_data->spent_on_research_arr[soft_data->current_research.value] += will_process;
 				if(will_process >= research_left) {
 					soft_data->research_completed_arr[soft_data->current_research.value] = true;
@@ -1068,15 +1108,15 @@ func void render(float interp_dt, float delta)
 				floorfi(topleft.x / size),
 				floorfi(topleft.y / size)
 			);
-			topleft_index.x = at_least(0, topleft_index.x - 8);
-			topleft_index.y = at_least(0, topleft_index.y - 8);
+			topleft_index.x = at_least(0, topleft_index.x - 1);
+			topleft_index.y = at_least(0, topleft_index.y - 1);
 
 			bottomright_index = v2i(
 				ceilfi(bottomright.x / size),
 				ceilfi(bottomright.y / size)
 			);
-			bottomright_index.x = at_most(c_max_tiles - 1, bottomright_index.x + 8);
-			bottomright_index.y = at_most(c_max_tiles - 1, bottomright_index.y + 8);
+			bottomright_index.x = at_most(c_chunk_count - 1, bottomright_index.x + 1);
+			bottomright_index.y = at_most(c_chunk_count - 1, bottomright_index.y + 1);
 		}
 
 		{
@@ -1094,10 +1134,11 @@ func void render(float interp_dt, float delta)
 						for(int y = chunk_y * c_chunk_size; y < chunk_y * c_chunk_size + c_chunk_size; y += 1) {
 							for(int x = chunk_x * c_chunk_size; x < chunk_x * c_chunk_size + c_chunk_size; x += 1) {
 								// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw terrain start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-								if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_1) {
+								if(soft_data->natural_terrain_arr[y][x] != e_tile_none) {
 									s_v2 pos = v2(x, y) * c_tile_size;
 									// s_v4 color = make_rgb(0, 1, 0);
-									draw_atlas(game->atlas, pos + c_tile_size_v * 0.5f, c_tile_size_v, v2i(2, 0), tile_color, 0);
+									s_v2i atlas_index = c_tile_atlas_index[soft_data->natural_terrain_arr[y][x]];
+									draw_atlas(game->atlas, pos + c_tile_size_v * 0.5f, c_tile_size_v, atlas_index, tile_color, 0);
 								}
 								// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw terrain end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1234,7 +1275,8 @@ func void render(float interp_dt, float delta)
 				s_v2 rect_size = v2(64) * p;
 				{
 					e_machine arr[] = {
-						e_machine_collector_1, e_machine_collector_2, e_machine_collector_3, e_machine_processor_1, e_machine_research
+						e_machine_collector_1, e_machine_collector_2, e_machine_collector_3,
+						e_machine_processor_1, e_machine_processor_2, e_machine_processor_3, e_machine_research
 					};
 					draw_text(S("Machines"), wxy(0.1f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
 					draw_text(S("Research"), wxy(0.7f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
@@ -1413,6 +1455,11 @@ func void render(float interp_dt, float delta)
 			}
 
 			{
+				s_len_str text = format_text("Free research: %s", game->free_research ? "On" : "Off");
+				do_bool_button_ex(text, container_get_pos_and_advance(&container), size, false, &game->free_research);
+			}
+
+			{
 				s_len_str text = format_text("Reset zoom");
 				if(do_button_ex(text, container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
 					soft_data->zoom = 1;
@@ -1420,9 +1467,9 @@ func void render(float interp_dt, float delta)
 			}
 
 			{
-				s_len_str text = format_text("+1000 currency");
+				s_len_str text = format_text("+10000000 currency");
 				if(do_button_ex(text, container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
-					soft_data->currency += 1000;
+					soft_data->currency += 10000000;
 				}
 			}
 
@@ -2452,6 +2499,7 @@ func float get_player_speed()
 	e_research arr[] = {
 		e_research_player_speed_1,
 		e_research_player_speed_2,
+		e_research_player_speed_3,
 	};
 	for(int i = 0; i < array_count(arr); i += 1) {
 		e_research r = arr[i];
@@ -2653,7 +2701,17 @@ func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine mach
 			}
 			else {
 				if(machine == e_machine_collector_1) {
-					if(is_resource_tile(soft_data->natural_terrain_arr[y][x])) {
+					if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_1) {
+						touches_resource = true;
+					}
+				}
+				else if(machine == e_machine_collector_2) {
+					if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_2) {
+						touches_resource = true;
+					}
+				}
+				else if(machine == e_machine_collector_3) {
+					if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_3) {
 						touches_resource = true;
 					}
 				}
@@ -2694,6 +2752,19 @@ func b8 is_machine_unlocked(e_machine machine)
 			}
 		}
 		xcase e_machine_processor_1: { result = true; }
+
+		xcase e_machine_processor_2: {
+			if(soft_data->research_completed_arr[e_research_processor_2]) {
+				result = true;
+			}
+		}
+
+		xcase e_machine_processor_3: {
+			if(soft_data->research_completed_arr[e_research_processor_3]) {
+				result = true;
+			}
+		}
+
 		xcase e_machine_research: { result = true; }
 		break; invalid_default_case;
 	}
@@ -2748,6 +2819,12 @@ func s_len_str get_research_tooltip(e_research research)
 		xcase e_research_collector_3: {
 			result = format_text("Unlocks Collector Mk3");
 		}
+		xcase e_research_processor_2: {
+			result = format_text("Unlocks Processor Mk2");
+		}
+		xcase e_research_processor_3: {
+			result = format_text("Unlocks Processor Mk3");
+		}
 		break; invalid_default_case;
 	}
 	result = format_text("%.*s\nCost: %i", expand_str(result), data.cost);
@@ -2769,6 +2846,12 @@ func s_len_str get_machine_tooltip(e_machine machine)
 			result = format_text("Place on resource patches to extract raw X");
 		}
 		xcase e_machine_processor_1: {
+			result = format_text("Convert raw X into usable X");
+		}
+		xcase e_machine_processor_2: {
+			result = format_text("Convert raw X into usable X");
+		}
+		xcase e_machine_processor_3: {
 			result = format_text("Convert raw X into usable X");
 		}
 		xcase e_machine_research: {

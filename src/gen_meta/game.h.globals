@@ -11,18 +11,29 @@ global constexpr s_machine_data g_machine_data[e_machine_count] = {
 	{
 		.requires_resource = true,
 		.size = 2,
-		.cost = 200,
+		.cost = 1000,
 		.atlas_index = {7, 0},
 	},
 	{
 		.requires_resource = true,
 		.size = 2,
-		.cost = 1000,
+		.cost = 100000,
+		.atlas_index = {10, 0},
 	},
 	{
 		.size = 3,
 		.cost = 20,
 		.atlas_index = {4, 0},
+	},
+	{
+		.size = 3,
+		.cost = 2000,
+		.atlas_index = {4, 1},
+	},
+	{
+		.size = 3,
+		.cost = 200000,
+		.atlas_index = {4, 2},
 	},
 	{
 		.size = 3,
@@ -47,11 +58,18 @@ global constexpr s_research_data g_research_data[e_research_count] = {
 		.value = 100,
 	},
 	{
-		.cost = 100,
+		.cost = 1000,
 	},
 	{
 		.requirement = maybe(e_research_collector_2),
+		.cost = 100000,
+	},
+	{
 		.cost = 1000,
+	},
+	{
+		.requirement = maybe(e_research_processor_2),
+		.cost = 100000,
 	},
 };
 

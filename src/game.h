@@ -229,6 +229,14 @@ enum e_tile : u8
 	e_tile_resource_1,
 	e_tile_resource_2,
 	e_tile_resource_3,
+	e_tile_count,
+};
+
+global constexpr s_v2i c_tile_atlas_index[] = {
+	zero,
+	{2, 0},
+	{8, 0},
+	{9, 0},
 };
 
 data_enum(e_machine,
@@ -249,20 +257,33 @@ data_enum(e_machine,
 	collector_2 {
 		.requires_resource = true,
 		.size = 2,
-		.cost = 200,
+		.cost = 1000,
 		.atlas_index = {7, 0},
 	}
 
 	collector_3 {
 		.requires_resource = true,
 		.size = 2,
-		.cost = 1000,
+		.cost = 100000,
+		.atlas_index = {10, 0},
 	}
 
 	processor_1 {
 		.size = 3,
 		.cost = 20,
 		.atlas_index = {4, 0},
+	}
+
+	processor_2 {
+		.size = 3,
+		.cost = 2000,
+		.atlas_index = {4, 1},
+	}
+
+	processor_3 {
+		.size = 3,
+		.cost = 200000,
+		.atlas_index = {4, 2},
 	}
 
 	research {
@@ -299,11 +320,18 @@ data_enum(e_research,
 		.value = 100,
 	}
 	collector_2 {
-		.cost = 100,
+		.cost = 1000,
 	}
 	collector_3 {
 		.requirement = maybe(e_research_collector_2),
+		.cost = 100000,
+	}
+	processor_2 {
 		.cost = 1000,
+	}
+	processor_3 {
+		.requirement = maybe(e_research_processor_2),
+		.cost = 100000,
 	}
 )
 
@@ -372,6 +400,7 @@ struct s_render_pass
 struct s_game
 {
 	b8 fast_player_speed;
+	b8 free_research;
 	b8 disable_damage_numbers;
 	b8 disable_gold_numbers;
 	b8 disable_lights;

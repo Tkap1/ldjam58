@@ -57,3 +57,5 @@ power??
 
 research building? you choose some research you want, and the more research buildings you have, the faster it completes
 	research just cost currency, so what the buildings do is consume currency at some rate
+
+placemetn ghost thingy should be transparent
