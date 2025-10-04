@@ -1,8 +1,6 @@
 enum e_entity
 {
 	e_entity_player,
-	e_entity_enemy,
-	e_entity_dying_enemy,
 	e_entity_emitter,
 	e_entity_fct,
 	e_entity_visual_effect,

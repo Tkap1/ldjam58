@@ -343,12 +343,6 @@ data_enum(e_entity,
 	player {
 		.max_count = 1,
 	}
-	enemy {
-		.max_count = 2048,
-	}
-	dying_enemy {
-		.max_count = 2048,
-	}
 	emitter {
 		.max_count = 1024,
 	}
@@ -394,11 +388,11 @@ func constexpr int get_max_entities()
 	return result;
 }
 
-func constexpr int get_max_entities_of_type(e_entity type)
-{
-	int result = g_entity_type_data[type].max_count;
-	return result;
-}
+// func constexpr int get_max_entities_of_type(e_entity type)
+// {
+// 	int result = g_entity_type_data[type].max_count;
+// 	return result;
+// }
 
 func constexpr int get_first_index(e_entity type)
 {
@@ -424,8 +418,6 @@ func constexpr int get_last_index_plus_one(e_entity type)
 global constexpr int c_max_entities = get_max_entities();
 global constexpr int c_first_index[e_entity_count] = {
 	get_first_index(e_entity_player),
-	get_first_index(e_entity_enemy),
-	get_first_index(e_entity_dying_enemy),
 	get_first_index(e_entity_emitter),
 	get_first_index(e_entity_fct),
 	get_first_index(e_entity_visual_effect),
@@ -433,8 +425,6 @@ global constexpr int c_first_index[e_entity_count] = {
 
 global constexpr int c_last_index_plus_one[e_entity_count] = {
 	get_last_index_plus_one(e_entity_player),
-	get_last_index_plus_one(e_entity_enemy),
-	get_last_index_plus_one(e_entity_dying_enemy),
 	get_last_index_plus_one(e_entity_emitter),
 	get_last_index_plus_one(e_entity_fct),
 	get_last_index_plus_one(e_entity_visual_effect),

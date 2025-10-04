@@ -152,7 +152,7 @@ m_dll_export void init(s_platform_data* platform_data)
 	platform_data->window_size.y = (int)c_world_size.y;
 
 	g_platform_data->window = SDL_CreateWindow(
-		"Loop Fighter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		"Collectorio", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		(int)c_world_size.x, (int)c_world_size.y, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 	);
 	SDL_SetWindowPosition(g_platform_data->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
@@ -274,7 +274,7 @@ m_dll_export void init(s_platform_data* platform_data)
 	#endif
 
 	#if defined(__EMSCRIPTEN__) || defined(m_winhttp)
-	load_or_create_leaderboard_id();
+	// load_or_create_leaderboard_id();
 	#endif
 
 	play_sound(e_sound_music, {.loop = true, .speed = game->music_speed.curr});
@@ -347,6 +347,8 @@ m_dll_export void do_game(s_platform_data* platform_data)
 	}
 	float interp_dt = (float)(clamped_accumulator / c_update_delay);
 	render(interp_dt, (float)delta64);
+
+	game->soft_data.frame_input = zero;
 }
 
 func void input()
@@ -354,7 +356,6 @@ func void input()
 	game->char_events.count = 0;
 	game->key_events.count = 0;
 
-	// u8* keyboard_state = (u8*)SDL_GetKeyboardState(null);
 	// game->input.left = game->input.left || keyboard_state[SDL_SCANCODE_A];
 	// game->input.right = game->input.right || keyboard_state[SDL_SCANCODE_D];
 
@@ -376,6 +377,16 @@ func void input()
 
 	s_hard_game_data* hard_data = &game->hard_data;
 	s_soft_game_data* soft_data = &game->soft_data;
+
+	// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		input start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	{
+		u8* keyboard_state = (u8*)SDL_GetKeyboardState(null);
+		soft_data->frame_input.left = soft_data->frame_input.left || keyboard_state[SDL_SCANCODE_A];
+		soft_data->frame_input.right = soft_data->frame_input.right || keyboard_state[SDL_SCANCODE_D];
+		soft_data->frame_input.up = soft_data->frame_input.up || keyboard_state[SDL_SCANCODE_W];
+		soft_data->frame_input.down = soft_data->frame_input.down || keyboard_state[SDL_SCANCODE_S];
+	}
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		input end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 	e_game_state0 state0 = (e_game_state0)get_state(&game->state0);
 	e_game_state1 state1 = (e_game_state1)get_state(&hard_data->state1);
@@ -501,7 +512,13 @@ func void input()
 			} break;
 
 			case SDL_MOUSEWHEEL: {
+				float x = range_lerp((float)event.wheel.y, -1, 1, 0.9f, 1.1f);
+				if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
+					soft_data->zoom *= x;
+					soft_data->zoom = clamp(soft_data->zoom, 0.25f, 4.0f);
+				}
 			} break;
+
 		}
 	}
 }
@@ -528,6 +545,30 @@ func void update()
 		for_enum(type_i, e_entity) {
 			entity_manager_reset(entity_arr, type_i);
 		}
+		soft_data->zoom = 1;
+
+
+		{
+			s_v2 pos = v2(
+				c_starting_chunk * c_chunk_size * c_tile_size + c_chunk_size * 0.5f * c_tile_size
+			);
+			unlock_chunk_v2i(v2i(c_starting_chunk, c_starting_chunk));
+			s_entity player = zero;
+			teleport_entity(&player, pos);
+			entity_manager_add(entity_arr, e_entity_player, player);
+		}
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		spawn resources start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		{
+			for(int y = 0; y < c_max_tiles; y += 1) {
+				for(int x = 0; x < c_max_tiles; x += 1) {
+					if(chance100(&game->rng, 10)) {
+						soft_data->natural_terrain_arr[y][x] = e_tile_copper;
+					}
+				}
+			}
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		spawn resources end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 		game->music_speed.target = 1;
 	}
@@ -565,6 +606,27 @@ func void update()
 		game->update_time += (float)c_update_delay;
 		hard_data->update_count += 1;
 		soft_data->update_count += 1;
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		{
+			s_entity* player = &entity_arr->data[c_first_index[e_entity_player]];
+			s_v2 movement = zero;
+			if(soft_data->frame_input.left) {
+				movement.x -= 1;
+			}
+			if(soft_data->frame_input.right) {
+				movement.x += 1;
+			}
+			if(soft_data->frame_input.up) {
+				movement.y -= 1;
+			}
+			if(soft_data->frame_input.down) {
+				movement.y += 1;
+			}
+			movement = v2_normalized(movement);
+			player->pos += movement * get_player_speed() * delta;
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	}
 
 	if(0) {
@@ -593,8 +655,23 @@ func void render(float interp_dt, float delta)
 
 	s_hard_game_data* hard_data = &game->hard_data;
 	s_soft_game_data* soft_data = &game->soft_data;
+	auto entity_arr = &soft_data->entity_arr;
+	s_entity player = entity_arr->data[c_first_index[e_entity_player]];
+	s_v2 player_pos = lerp_v2(player.prev_pos, player.pos, interp_dt);
 
 	s_m4 ortho = make_orthographic(0, c_world_size.x, c_world_size.y, 0, -100, 100);
+	s_m4 view;
+	s_m4 view_inv;
+	{
+		float cam_x = (player_pos.x * soft_data->zoom) - c_world_center.x;
+		float cam_y = (player_pos.y * soft_data->zoom) - c_world_center.y;
+		view = m4_translate(v3(-cam_x, -cam_y, 0.0f));
+		view = view * m4_scale(v3(soft_data->zoom, soft_data->zoom, 1.0f));
+		view_inv = m4_inverse(view);
+	}
+	s_m4 view_projection = m4_multiply(ortho, view);
+
+	s_v2 world_mouse = v2_multiply_m4(g_mouse, view_inv);
 
 	clear_framebuffer_color(0, v4(0.0f, 0, 0, 0));
 
@@ -747,11 +824,6 @@ func void render(float interp_dt, float delta)
 			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_gold_numbers);
 		}
 
-		{
-			s_len_str text = format_text("Auto dash when 0 cooldown: %s", game->disable_auto_dash_when_no_cooldown ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_auto_dash_when_no_cooldown);
-		}
-
 		b8 escape = is_key_pressed(SDLK_ESCAPE, true);
 		if(do_button(S("Back"), wxy(0.87f, 0.92f), true) == e_button_result_left_click || escape) {
 			pop_state_transition(&game->state0, game->render_time, c_transition_time);
@@ -867,17 +939,127 @@ func void render(float interp_dt, float delta)
 
 	if(do_game) {
 		b8 do_game_ui = true;
-		auto entity_arr = &soft_data->entity_arr;
 
-		update_particles(delta, true, 0);
-
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw terrain start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
-			data.projection = ortho;
-			data.blend_mode = e_blend_mode_additive;
-			data.depth_mode = e_depth_mode_no_read_no_write;
-			render_flush(data, true, 0);
+			int size = c_chunk_size * c_tile_size;
+			s_v2 topleft = v2_multiply_m4(v2(0, 0), view_inv);
+			s_v2 bottomright = v2_multiply_m4(c_world_size, view_inv);
+			s_v2i topleft_index = v2i(
+				floorfi(topleft.x / size),
+				floorfi(topleft.y / size)
+			);
+			topleft_index.x = at_least(0, topleft_index.x);
+			topleft_index.y = at_least(0, topleft_index.y);
+
+			s_v2i bottomright_index = v2i(
+				ceilfi(bottomright.x / size),
+				ceilfi(bottomright.y / size)
+			);
+			bottomright_index.x = at_most(c_max_tiles - 1, bottomright_index.x);
+			bottomright_index.y = at_most(c_max_tiles - 1, bottomright_index.y);
+
+			s_rect camera_bounds = get_camera_bounds(view_inv);
+
+			for(int chunk_y = topleft_index.y; chunk_y <= bottomright_index.y; chunk_y += 1) {
+				for(int chunk_x = topleft_index.x; chunk_x <= bottomright_index.x; chunk_x += 1) {
+					s_rng chunk_rng = make_rng(chunk_x * chunk_y);
+					s_v4 tile_color = rand_color(&chunk_rng);
+					s_v2i chunk_index = v2i(chunk_x, chunk_y);
+					b8 is_unlocked = is_chunk_unlocked_v2i(chunk_index);
+					b8 is_unlockable = !is_unlocked && are_any_adjacent_chunks_unlocked(chunk_index);
+					if(is_unlocked) {
+						for(int y = chunk_y * c_chunk_size; y < chunk_y * c_chunk_size + c_chunk_size; y += 1) {
+							for(int x = chunk_x * c_chunk_size; x < chunk_x * c_chunk_size + c_chunk_size; x += 1) {
+								if(soft_data->natural_terrain_arr[y][x] == e_tile_copper) {
+									s_v2 pos = v2(x, y) * c_tile_size;
+									// s_v4 color = make_rgb(0, 1, 0);
+									draw_atlas(pos + c_tile_size_v * 0.5f, c_tile_size_v, v2i(0, 0), tile_color, 0);
+								}
+							}
+						}
+					}
+					else if(is_unlockable) {
+
+						int chunk_cost = get_chunk_unlock_cost(chunk_index);
+						b8 can_afford_chunk = can_afford(soft_data->currency, chunk_cost);
+						{
+							constexpr float font_size = 128;
+							s_v4 color = make_rrr(1);
+							s_len_str text = format_text("$$FFFFFF%i$.", chunk_cost);
+							if(!can_afford_chunk) {
+								text = format_text("$$FF0000%i$.", chunk_cost);
+							}
+							s_v2 text_pos = get_chunk_center(chunk_index);
+
+							// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		try to keep the chunk cost on screen in a very dumb way start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+							{
+								s_v2 dir = v2_dir_from_to(text_pos, player_pos);
+								constexpr float movement_per_step = 2;
+								float distance_moved = 0;
+								s_v2 text_size = get_text_size(format_text("%i", chunk_cost), &game->font, font_size);
+								s_rect temp_bounds = expand_rect_sides_from_center(camera_bounds, -256);
+								while(true) {
+									b8 is_on_screen = rect_vs_rect_topleft(temp_bounds.pos, temp_bounds.size, text_pos - text_size * 0.5f, text_size);
+									if(is_on_screen) {
+										break;
+									}
+									text_pos += dir * movement_per_step;
+									distance_moved += movement_per_step;
+									if(distance_moved >= 650) {
+										break;
+									}
+								}
+							}
+							// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		try to keep the chunk cost on screen in a very dumb way end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+							draw_text(text, text_pos, font_size, make_rrr(1), true, &game->font, zero, 1);
+						}
+
+						s_rect chunk_rect = get_chunk_rect(chunk_index);
+						if(mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
+							draw_atlas(chunk_rect.pos + chunk_rect.size * 0.5f, chunk_rect.size, v2i(0, 0), make_rrr(0.2f), 0);
+							if(is_key_pressed(c_left_button, true) && can_afford_chunk) {
+								unlock_chunk_v2i(chunk_index);
+								add_gold(-chunk_cost);
+							}
+						}
+
+					}
+				}
+			}
 		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw terrain end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+		do_basic_render_flush(view_projection, 0);
+		do_basic_render_flush(view_projection, 1);
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		{
+			draw_atlas(player_pos, c_player_size_v, v2i(0, 0), make_rgb(1, 0, 0), 0);
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+		do_basic_render_flush(view_projection, 0);
+
+		// {
+		// 	s_render_flush_data data = make_render_flush_data(zero, zero);
+		// 	data.projection = ortho;
+		// 	data.blend_mode = e_blend_mode_normal;
+		// 	data.depth_mode = e_depth_mode_no_read_no_write;
+		// 	render_flush(data, true, 0);
+		// }
+
+
+		// update_particles(delta, true, 0);
+
+		// {
+		// 	s_render_flush_data data = make_render_flush_data(zero, zero);
+		// 	data.projection = ortho;
+		// 	data.blend_mode = e_blend_mode_additive;
+		// 	data.depth_mode = e_depth_mode_no_read_no_write;
+		// 	render_flush(data, true, 0);
+		// }
 
 		if(do_game_ui) {
 
@@ -888,20 +1070,25 @@ func void render(float interp_dt, float delta)
 			s_container container = make_down_center_x_container(rect, button_size, 10);
 
 			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
-				data.projection = ortho;
-				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_read_and_write;
-				render_flush(data, true, 0);
+				s_len_str text = format_text("%lli", soft_data->currency);
+				draw_text(text, v2(4), 64, make_rrr(1), false, &game->font, zero, 0);
 			}
 
 			{
 				s_render_flush_data data = make_render_flush_data(zero, zero);
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
-				data.depth_mode = e_depth_mode_read_and_write;
+				data.depth_mode = e_depth_mode_no_read_no_write;
 				render_flush(data, true, 0);
 			}
+
+			// {
+			// 	s_render_flush_data data = make_render_flush_data(zero, zero);
+			// 	data.projection = ortho;
+			// 	data.blend_mode = e_blend_mode_normal;
+			// 	data.depth_mode = e_depth_mode_read_and_write;
+			// 	render_flush(data, true, 0);
+			// }
 
 			if(game->tooltip.count > 0) {
 				float font_size = 32;
@@ -933,6 +1120,27 @@ func void render(float interp_dt, float delta)
 			};
 			s_v2 size = v2(320, 48);
 			s_container container = make_down_center_x_container(rect, size, 10);
+
+			{
+				s_len_str text = format_text("10x movement speed: %s", game->fast_player_speed ? "On" : "Off");
+				do_bool_button_ex(text, container_get_pos_and_advance(&container), size, false, &game->fast_player_speed);
+			}
+
+			{
+				s_len_str text = format_text("Reset zoom");
+				if(do_button_ex(text, container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
+					soft_data->zoom = 1;
+				}
+			}
+
+			{
+				s_len_str text = format_text("+1000 currency");
+				if(do_button_ex(text, container_get_pos_and_advance(&container), size, false, zero) == e_button_result_left_click) {
+					soft_data->currency += 1000;
+				}
+			}
+
+			do_basic_render_flush(ortho, 0);
 		}
 		#endif
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		cheat menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1945,4 +2153,119 @@ func s_active_sound* find_playing_sound(e_sound id)
 func void do_lerpable_snap(s_lerpable* lerpable, float dt, float max_diff)
 {
 	lerpable->curr = lerp_snap(lerpable->curr, lerpable->target, dt, max_diff);
+}
+
+func float get_player_speed()
+{
+	float result = 300;
+	if(game->fast_player_speed) {
+		result *= 10;
+	}
+	return result;
+}
+
+func void do_basic_render_flush(s_m4 ortho, int render_pass_index)
+{
+	s_render_flush_data data = make_render_flush_data(zero, zero);
+	data.projection = ortho;
+	data.blend_mode = e_blend_mode_normal;
+	data.depth_mode = e_depth_mode_no_read_no_write;
+	render_flush(data, true, render_pass_index);
+}
+
+func s_rect get_chunk_rect(s_v2i index)
+{
+	assert(index.x >= 0);
+	assert(index.x < c_chunk_count);
+	assert(index.y >= 0);
+	assert(index.y < c_chunk_count);
+
+	s_rect result = zero;
+	result.pos = v2(
+		index.x * c_chunk_size * c_tile_size,
+		index.y * c_chunk_size * c_tile_size
+	);
+	result.size = v2(c_chunk_size * c_tile_size);
+	return result;
+}
+
+func b8 is_chunk_unlocked(int x, int y)
+{
+	if(x < 0 || x >= c_chunk_count || y < 0 || y >= c_chunk_count) {
+		return false;
+	}
+	b8 result = game->soft_data.purchased_chunk_arr[y][x];
+	return result;
+}
+
+func b8 is_chunk_unlocked_v2i(s_v2i index)
+{
+	b8 result = is_chunk_unlocked(index.x, index.y);
+	return result;
+}
+
+func b8 are_any_adjacent_chunks_unlocked(s_v2i index)
+{
+	s_v2i offset_arr[] = {
+		v2i(0, -1), v2i(-1, 0), v2i(1, 0), v2i(0, 1)
+	};
+	b8 result = false;
+	for(int i = 0; i < 4; i += 1) {
+		if(is_chunk_unlocked_v2i(index + offset_arr[i])) {
+			result = true;
+			break;
+		}
+	}
+	return result;
+}
+
+func void unlock_chunk_v2i(s_v2i index)
+{
+	assert(index.x >= 0);
+	assert(index.x < c_chunk_count);
+	assert(index.y >= 0);
+	assert(index.y < c_chunk_count);
+	assert(!is_chunk_unlocked_v2i(index));
+	game->soft_data.purchased_chunk_arr[index.y][index.x] = true;
+}
+
+func int get_chunk_unlock_cost(s_v2i index)
+{
+	assert(index.x >= 0);
+	assert(index.x < c_chunk_count);
+	assert(index.y >= 0);
+	assert(index.y < c_chunk_count);
+	assert(!is_chunk_unlocked_v2i(index));
+	int distance = abs(index.x - c_starting_chunk) + abs(index.y - c_starting_chunk);
+	int result = distance * 50;
+	return result;
+}
+
+func s_v2 get_chunk_center(s_v2i index)
+{
+	s_rect rect = get_chunk_rect(index);
+	s_v2 result = rect.pos + rect.size * 0.5f;
+	return result;
+}
+
+func b8 can_afford(s64 currency, s64 cost)
+{
+	b8 result = currency >= cost;
+	return result;
+}
+
+func void add_gold(s64 gold)
+{
+	game->soft_data.currency += gold;
+	assert(game->soft_data.currency >= 0);
+}
+
+func s_rect get_camera_bounds(s_m4 view_inv)
+{
+	s_v2 topleft = v2(0, 0);
+	s_v2 bottomright = v2(c_world_size.x, c_world_size.y);
+	s_rect result;
+	result.pos = v2_multiply_m4(topleft, view_inv);
+	result.size = v2_multiply_m4(bottomright, view_inv) - result.pos;
+	return result;
 }

@@ -193,6 +193,10 @@ struct s_entity
 	float duration;
 	union {
 
+		// @Note(tkap, 04/10/2025): Player
+		// struct {
+		// };
+
 		// @Note(tkap, 31/07/2025): Emitter
 		struct {
 			s_particle_emitter_a emitter_a;
@@ -206,8 +210,23 @@ struct s_frame_data
 	int lives_to_lose;
 };
 
+struct s_input
+{
+	b8 left;
+	b8 right;
+	b8 up;
+	b8 down;
+};
+
+enum e_tile : u8
+{
+	e_tile_none,
+	e_tile_copper,
+};
+
 struct s_soft_game_data
 {
+	s_input frame_input;
 	int frames_to_freeze;
 	s_frame_data frame_data;
 	b8 tried_to_submit_score;
@@ -216,10 +235,16 @@ struct s_soft_game_data
 	float start_screen_shake_timestamp;
 	float start_restart_timestamp;
 	s_list<s_particle, 65536> particle_arr;
+	float zoom;
 
 	s_entity_manager<s_entity, c_max_entities> entity_arr;
 
 	s_list<s_timed_msg, 8> timed_msg_arr;
+
+	s64 currency;
+
+	e_tile natural_terrain_arr[c_max_tiles][c_max_tiles];
+	b8 purchased_chunk_arr[c_chunk_count][c_chunk_count];
 };
 
 struct s_hard_game_data
@@ -247,7 +272,7 @@ struct s_render_pass
 
 struct s_game
 {
-	b8 disable_auto_dash_when_no_cooldown;
+	b8 fast_player_speed;
 	b8 disable_damage_numbers;
 	b8 disable_gold_numbers;
 	b8 disable_lights;

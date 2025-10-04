@@ -1,12 +1,48 @@
+automation game
+incremental game
 
-POLISH:
-	some kind of movement animation on player
-	dont display "paused" text unless we are in default state1
+we could be collecting X by building machines? reaching certain amount of X
+	unlocks more space, which you can use to build more machines to get X faster
+X could also be consumed to improve machines??
+goal is to reach a certain amount of X?
+or maybe goal is to make a giga super epic collector machine that collects all of the things and you win
+no belts
+maybe bots? (factorio style)
+	speed upgrade
+	stack size upgrade
 
-Changelog:
-- Lightning bolt works with Multistrike
-- Reduced Lightning bolt cost increase per level from 50 to 30
-- You now auto dash when cooldown is 0 (can be turned off in the options menu)
-- You can now queue upgrades by right clicking them (respects holding CTRL and SHIFT). They are bought in the order you queued them, even if you enough gold for a cheaper upgrade that was queued at a later point
-- You can now see at what time you completed each wave in the bar at the top, and also in the leaderboard screen after you beat the game
-- Leaderboard now has pages that you can navigate
+we have a player
+	speed upgrade
+	building reach upgrade
+
+to collect, we place "collectors"? on top of whatever resource things
+	there are different tiers of resource that require higher tier collectors?
+
+a bunch of currencies that upgrade after you reach a certain amount (like WoW gold)
+	there are multiple tiers of resource that give higher tier resources. they require higher tier collector?
+	collectors don't mine faster, they just allow you to mine higher tier
+
+maybe limit bots? but be able to upgrade your max? (for performance?)
+
+gameplay
+	you start with some currency
+	find/move to resource patches
+	build a few collectors on the patches
+	bots will fly from the main building to the collectors and bring the currency home
+	player standing near resource patches also collects stuff?
+
+do all buildings have the same size or not?
+	yes = easier to program
+	no = cooler
+
+problem:
+	we never build (we cant) anything on empty space, only resource patches
+		we could be allowed to build a "hub", which is a place where bots can deposit currency isntead of having to go back to the main hub
+		resources give you "raw" currency, which has to be turned into the actual currency, so that could have with some kind of machine ("processor"? it probably also have tiers)
+
+could have a machine that collects without the need for resources, but it does so way slower
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+leaderboard id
+reenable loeaderboard call inside init
