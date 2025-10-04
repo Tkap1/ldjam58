@@ -194,8 +194,13 @@ struct s_entity
 	union {
 
 		// @Note(tkap, 04/10/2025): Player
-		// struct {
-		// };
+		struct {
+			b8 walking;
+			int animation_index;
+			float animation_time;
+			float rotation;
+			s_v2 last_dir;
+		};
 
 		// @Note(tkap, 31/07/2025): Emitter
 		struct {
@@ -399,6 +404,9 @@ struct s_game
 	s_input_name_state input_name_state;
 	int num_times_we_attacked_an_enemy;
 	int num_times_we_dashed;
+
+	s_atlas atlas;
+	s_atlas superku;
 
 	#if defined(m_winhttp)
 	HINTERNET session;

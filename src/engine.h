@@ -48,6 +48,7 @@ enum e_texture
 	e_texture_font,
 	e_texture_light,
 	e_texture_atlas,
+	e_texture_superku,
 	e_texture_count
 };
 
@@ -57,6 +58,7 @@ global constexpr char* c_texture_path_arr[e_texture_count] = {
 	"",
 	"",
 	"assets/atlas.png",
+	"assets/superku.png",
 };
 
 
@@ -238,6 +240,14 @@ struct s_glyph
 struct s_texture
 {
 	u32 id;
+};
+
+struct s_atlas
+{
+	int padding;
+	s_v2i texture_size;
+	e_texture texture;
+	s_v2i sprite_size;
 };
 
 struct s_font

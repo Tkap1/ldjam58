@@ -8,9 +8,6 @@ global constexpr s_v3 c_up_axis = {0, 0, 1};
 global constexpr int c_updates_per_second = 30;
 global constexpr f64 c_update_delay = 1.0 / c_updates_per_second;
 global constexpr float c_transition_time = 0.25f;
-global constexpr s_v2i c_atlas_size_v = {256, 256};
-global constexpr int c_atlas_padding = 0;
-global constexpr int c_atlas_sprite_size = 16;
 global constexpr s_v2 c_game_area = {c_world_size.x * 0.75f, c_world_size.y * 1.0f};
 global constexpr float c_spawn_delay = 2;
 global constexpr float c_dash_duration = 0.5f;
@@ -31,6 +28,7 @@ global constexpr int c_chunk_size = 48;
 global constexpr int c_chunk_count = c_max_tiles / c_chunk_size;
 global constexpr int c_starting_chunk = c_chunk_count / 2;
 global constexpr int c_biggest_machine_tile_size = 8;
+global constexpr float c_base_player_speed = 300;
 
 global constexpr float c_game_speed_arr[] = {
 	0.0f, 0.01f, 0.1f, 0.25f, 0.5f,

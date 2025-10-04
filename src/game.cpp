@@ -252,6 +252,18 @@ m_dll_export void init(s_platform_data* platform_data)
 
 	game->font = load_font_from_file("assets/Inconsolata-Regular.ttf", 128, &game->render_frame_arena);
 
+	// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		atlas start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	{
+		game->atlas.texture = e_texture_atlas;
+		game->atlas.texture_size = v2i(256, 256);
+		game->atlas.sprite_size = v2i(16, 16);
+
+		game->superku.texture = e_texture_superku;
+		game->superku.texture_size = v2i(1024, 516);
+		game->superku.sprite_size = v2i(256, 256);
+	}
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		atlas end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 	{
 		u32* texture = &game->texture_arr[e_texture_light].id;
 		game->light_fbo.size.x = (int)c_world_size.x;
@@ -687,6 +699,7 @@ func void update()
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
 			s_entity* player = &entity_arr->data[c_first_index[e_entity_player]];
+			player->walking = false;
 			s_v2 movement = zero;
 			if(soft_data->frame_input.left) {
 				movement.x -= 1;
@@ -699,6 +712,10 @@ func void update()
 			}
 			if(soft_data->frame_input.down) {
 				movement.y += 1;
+			}
+			if(v2_length(movement) > 0) {
+				player->last_dir = movement;
+				player->walking = true;
 			}
 			movement = v2_normalized(movement) * get_player_speed() * delta;
 
@@ -1080,7 +1097,7 @@ func void render(float interp_dt, float delta)
 								if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_1) {
 									s_v2 pos = v2(x, y) * c_tile_size;
 									// s_v4 color = make_rgb(0, 1, 0);
-									draw_atlas(pos + c_tile_size_v * 0.5f, c_tile_size_v, v2i(2, 0), tile_color, 0);
+									draw_atlas(game->atlas, pos + c_tile_size_v * 0.5f, c_tile_size_v, v2i(2, 0), tile_color, 0);
 								}
 								// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw terrain end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1097,7 +1114,7 @@ func void render(float interp_dt, float delta)
 											color = make_rrr(1.0f);
 										}
 										s_v2i atlas_index = g_machine_data[machine].atlas_index;
-										draw_atlas_topleft(pos + v2(4), size, atlas_index, color, 1);
+										draw_atlas_topleft(game->atlas, pos + v2(4), size, atlas_index, color, 1);
 										if(hovered && !soft_data->machine_to_place.valid && is_key_pressed(c_right_button, true)) {
 											sell_machine(tile_index, machine);
 										}
@@ -1110,7 +1127,7 @@ func void render(float interp_dt, float delta)
 					else {
 
 						s_rect chunk_rect = get_chunk_rect(chunk_index);
-						draw_atlas_topleft(chunk_rect.pos, chunk_rect.size, v2i(0, 0), make_rrr(0.0f), 0);
+						draw_atlas_topleft(game->atlas, chunk_rect.pos, chunk_rect.size, v2i(0, 0), make_rrr(0.0f), 0);
 
 						if(is_unlockable) {
 							int chunk_cost = get_chunk_unlock_cost(chunk_index);
@@ -1149,7 +1166,7 @@ func void render(float interp_dt, float delta)
 							}
 
 							if(mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
-								draw_atlas(chunk_rect.pos + chunk_rect.size * 0.5f, chunk_rect.size, v2i(0, 0), make_rrr(0.2f), 0);
+								draw_atlas(game->atlas, chunk_rect.pos + chunk_rect.size * 0.5f, chunk_rect.size, v2i(0, 0), make_rrr(0.2f), 0);
 								if(!soft_data->open_inventory_timestamp.valid && is_key_pressed(c_left_button, true) && can_afford_chunk) {
 									unlock_chunk_v2i(chunk_index);
 									add_currency(-chunk_cost);
@@ -1171,7 +1188,7 @@ func void render(float interp_dt, float delta)
 				if(!can_place) {
 					color = make_rgb(1, 0, 0);
 				}
-				draw_atlas_topleft(pos + v2(4), size, v2i(0, 0), color, 1);
+				draw_atlas_topleft(game->atlas, pos + v2(4), size, v2i(0, 0), color, 1);
 
 				if(can_place && is_key_down(c_left_button)) {
 					play_sound(e_sound_key, zero);
@@ -1188,7 +1205,19 @@ func void render(float interp_dt, float delta)
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
-			draw_atlas(player_pos, c_player_size_v, v2i(0, 0), make_rgb(1, 0, 0), 0);
+			float wanted_rotation = v2_angle(player.last_dir);
+			s_entity* temp_player = &entity_arr->data[c_first_index[e_entity_player]];
+			if(temp_player->walking) {
+				float player_speed = get_player_speed();
+				float p = player_speed / c_base_player_speed;
+				temp_player->animation_time += delta * p;
+			}
+			if(temp_player->animation_time >= 0.1f) {
+				temp_player->animation_time -= 0.1f;
+				temp_player->animation_index = circular_index(temp_player->animation_index + 1, 4);
+			}
+			temp_player->rotation = lerp_angle(temp_player->rotation, wanted_rotation, delta * 10);
+			draw_atlas_ex(game->superku, player_pos, c_player_size_v * 2, v2i(temp_player->animation_index, 1), make_rrr(1), temp_player->rotation, zero, 0);
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1229,12 +1258,12 @@ func void render(float interp_dt, float delta)
 								soft_data->machine_to_place = maybe(arr[i]);
 								soft_data->open_inventory_timestamp = zero;
 							}
-							draw_atlas_topleft(pos, rect_size, v2i(0, 0), make_rrr(flash * 0.5f), 1);
-							draw_atlas_topleft(pos, rect_size, atlas_index, make_rrr(flash), 1);
+							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(flash * 0.5f), 1);
+							draw_atlas_topleft(game->atlas, pos, rect_size, atlas_index, make_rrr(flash), 1);
 						}
 						else {
-							draw_atlas_topleft(pos, rect_size, v2i(0, 0), make_rrr(0.33f * flash), 1);
-							draw_atlas_topleft(pos, rect_size, v2i(1, 0), make_rrr(1.0f * flash), 2);
+							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(0.33f * flash), 1);
+							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(1, 0), make_rrr(1.0f * flash), 2);
 						}
 						pos.x += 80;
 					}
@@ -1261,7 +1290,7 @@ func void render(float interp_dt, float delta)
 							flash = sin_range(0.5f, 1.0f, game->render_time * 15);
 						}
 						s_v4 color = make_rrr(flash);
-						draw_atlas_topleft(pos, rect_size, v2i(6, 0), color, 1);
+						draw_atlas_topleft(game->atlas, pos, rect_size, v2i(6, 0), color, 1);
 						if(hovered && is_key_pressed(c_left_button, true)) {
 							soft_data->current_research = maybe(research_i);
 							soft_data->open_inventory_timestamp = zero;
@@ -2071,12 +2100,12 @@ func b8 check_action(float curr_time, float timestamp, float grace)
 	return result;
 }
 
-func void draw_atlas(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, int render_pass_index)
+func void draw_atlas(s_atlas atlas, s_v2 pos, s_v2 size, s_v2i index, s_v4 color, int render_pass_index)
 {
-	draw_atlas_ex(pos, size, index, color, 0, zero, render_pass_index);
+	draw_atlas_ex(atlas, pos, size, index, color, 0, zero, render_pass_index);
 }
 
-func void draw_atlas_ex(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rotation, s_draw_data draw_data, int render_pass_index)
+func void draw_atlas_ex(s_atlas atlas, s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rotation, s_draw_data draw_data, int render_pass_index)
 {
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, draw_data.z));
@@ -2085,12 +2114,12 @@ func void draw_atlas_ex(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rota
 	}
 	data.model *= m4_scale(v3(size, 1));
 	data.color = color;
-	int x = index.x * c_atlas_sprite_size + c_atlas_padding;
-	data.uv_min.x = x / (float)c_atlas_size_v.x;
-	data.uv_max.x = data.uv_min.x + (c_atlas_sprite_size - c_atlas_padding) / (float)c_atlas_size_v.x;
-	int y = index.y * c_atlas_sprite_size + c_atlas_padding;
-	data.uv_min.y = y / (float)(c_atlas_size_v.y);
-	data.uv_max.y = data.uv_min.y + (c_atlas_sprite_size - c_atlas_padding) / (float)c_atlas_size_v.y;
+	int x = index.x * atlas.sprite_size.x + atlas.padding;
+	data.uv_min.x = x / (float)atlas.texture_size.x;
+	data.uv_max.x = data.uv_min.x + (atlas.sprite_size.x - atlas.padding) / (float)atlas.texture_size.x;
+	int y = index.y * atlas.sprite_size.y + atlas.padding;
+	data.uv_min.y = y / (float)(atlas.texture_size.y);
+	data.uv_max.y = data.uv_min.y + (atlas.sprite_size.y - atlas.padding) / (float)atlas.texture_size.y;
 	data.mix_weight = draw_data.mix_weight;
 	data.mix_color = draw_data.mix_color;
 
@@ -2098,13 +2127,13 @@ func void draw_atlas_ex(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, float rota
 		swap(&data.uv_min.x, &data.uv_max.x);
 	}
 
-	add_to_render_group(data, e_shader_flat_remove_black, e_texture_atlas, e_mesh_quad, render_pass_index);
+	add_to_render_group(data, e_shader_flat, atlas.texture, e_mesh_quad, render_pass_index);
 }
 
-func void draw_atlas_topleft(s_v2 pos, s_v2 size, s_v2i index, s_v4 color, int render_pass_index)
+func void draw_atlas_topleft(s_atlas atlas, s_v2 pos, s_v2 size, s_v2i index, s_v4 color, int render_pass_index)
 {
 	pos += size * 0.5f;
-	draw_atlas(pos, size, index, color, render_pass_index);
+	draw_atlas(atlas, pos, size, index, color, render_pass_index);
 }
 
 func void draw_circle(s_v2 pos, float radius, s_v4 color, int render_pass_index)
@@ -2327,7 +2356,7 @@ func void radix_sort_32(t* source, u32 count, F get_radix, s_linear_arena* arena
 func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha, int render_pass_index)
 {
 	pos += size * 0.5f;
-	draw_atlas_ex(pos, size, v2i(124, 42), make_ra(1, alpha), 0, zero, render_pass_index);
+	draw_atlas_ex(game->atlas, pos, size, v2i(124, 42), make_ra(1, alpha), 0, zero, render_pass_index);
 	s_len_str str = format_text("%c", to_upper_case(c));
 	pos.x -= size.x * 0.025f;
 	pos.y -= size.x * 0.05f;
@@ -2414,7 +2443,7 @@ func void do_lerpable_snap(s_lerpable* lerpable, float dt, float max_diff)
 
 func float get_player_speed()
 {
-	float result = 300;
+	float result = c_base_player_speed;
 	if(game->fast_player_speed) {
 		result *= 10;
 	}
