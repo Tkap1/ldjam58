@@ -183,6 +183,16 @@ enum e_button_result
 	e_button_result_right_click,
 };
 
+enum e_place_result
+{
+	e_place_result_success,
+	e_place_result_currency,
+	e_place_result_requires_resource,
+	e_place_result_out_of_reach,
+	e_place_result_occupied,
+	e_place_result_chunk_locked,
+};
+
 struct s_entity
 {
 	int id;
@@ -206,6 +216,11 @@ struct s_entity
 		struct {
 			s_particle_emitter_a emitter_a;
 			s_particle_emitter_b emitter_b;
+		};
+
+		// @Note(tkap, 31/07/2025): FCT
+		struct {
+			s_len_str text;
 		};
 	};
 };
@@ -409,6 +424,8 @@ struct s_soft_game_data
 	float collector_timer;
 	float processor_timer;
 	float research_timer;
+
+	float last_non_spammy_timestamp;
 
 	s_maybe<float> open_inventory_timestamp;
 	s_hold_input hold_input;

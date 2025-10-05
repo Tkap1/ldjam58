@@ -80,7 +80,7 @@ func s_rect get_camera_bounds(s_m4 view_inv);
 func s_v2i chunk_index_from_pos(s_v2 pos);
 func s_v2i tile_index_from_pos(s_v2 pos);
 func void place_machine(s_v2i tile_index, e_machine machine);
-func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine machine, int currency);
+func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v2i tile_index, e_machine machine, int currency);
 func s_v2i chunk_index_from_tile_index(s_v2i tile_index);
 func b8 is_machine_unlocked(e_machine machine);
 func b8 is_resource_tile(e_tile tile);
@@ -92,6 +92,10 @@ func s_len_str get_machine_tooltip(e_machine machine);
 template <int n>
 func void builder_add_separator(s_str_builder<n>* builder);
 func void draw_selector_center(s_v2 pos, s_v2 size, float brightness, int render_pass_index);
+func int get_tile_distance_from_player_to_machine(s_v2 player_pos, s_v2i machine_tile_index, e_machine machine);
+func int get_player_tile_reach();
+func void add_non_spammy_message(s_v2 pos, s_len_str text);
+func s_len_str str_from_place_result(e_place_result place_result);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

@@ -1196,8 +1196,16 @@ func void render(float interp_dt, float delta)
 										int frame_index = roundfi(foo) % g_machine_data[machine].frame_count;
 										s_v2i atlas_index = g_machine_data[machine].frame_arr[frame_index];
 										draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, color, 1);
+										int dist = get_tile_distance_from_player_to_machine(player.pos, tile_index, machine);
+										b8 in_range = dist <= get_player_tile_reach();
 										if(hovered && !soft_data->open_inventory_timestamp.valid && is_key_down(c_right_button)) {
-											sell_machine(tile_index, machine);
+											if(in_range) {
+												sell_machine(tile_index, machine);
+											}
+											else {
+												s_len_str str = str_from_place_result(e_place_result_out_of_reach);
+												add_non_spammy_message(world_mouse, str);
+											}
 										}
 									}
 								}
@@ -1268,18 +1276,29 @@ func void render(float interp_dt, float delta)
 				float machine_size = (float)g_machine_data[machine].size;
 				s_v2 size = c_tile_size_v * machine_size;
 				s_v2i atlas_index = g_machine_data[machine].frame_arr[0];
-				b8 can_place = can_we_place_machine(chunk_index, tile_index, machine, soft_data->currency);
+				e_place_result place_result = can_we_place_machine(player.pos, chunk_index, tile_index, machine, soft_data->currency);
 				s_v4 color = make_rgb(0, 1, 0);
-				if(!can_place) {
+				if(place_result == e_place_result_out_of_reach) {
+					color = make_rgb(0, 0, 1);
+				}
+				else if(place_result != e_place_result_success) {
 					color = make_rgb(1, 0, 0);
 				}
 				s_v2 tile_center = pos + c_tile_size_v * 0.5f * machine_size;
 				draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, set_alpha(color, 0.5f), 2);
 
-				if(can_place && is_key_down(c_left_button)) {
-					play_sound(e_sound_key, zero);
-					place_machine(tile_index, machine);
-					add_currency(-get_machine_cost(machine));
+				if(!game->soft_data.open_inventory_timestamp.valid && is_key_down(c_left_button)) {
+					if(place_result == e_place_result_success) {
+						play_sound(e_sound_key, zero);
+						place_machine(tile_index, machine);
+						add_currency(-get_machine_cost(machine));
+					}
+					else {
+						s_len_str str = str_from_place_result(place_result);
+						if(str.count > 0) {
+							add_non_spammy_message(world_mouse, str);
+						}
+					}
 				}
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		placing end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1308,6 +1327,25 @@ func void render(float interp_dt, float delta)
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 		do_basic_render_flush(view_projection, 0);
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw fct start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		{
+			for(int fct_i = c_first_index[e_entity_fct]; fct_i < c_last_index_plus_one[e_entity_fct]; fct_i += 1) {
+				if(!entity_arr->active[fct_i]) {
+					continue;
+				}
+				s_entity* fct = &entity_arr->data[fct_i];
+				float passed = game->render_time - fct->spawn_timestamp;
+				float alpha = ease_in_expo_advanced(passed, 0, 1, 1, 0);
+				draw_text(fct->text, fct->pos, 24, make_ra(1, alpha), true, &game->font, zero, 0);
+				fct->pos.y -= delta * 60;
+				if(passed >= 1) {
+					entity_manager_remove(entity_arr, e_entity_fct, fct_i);
+				}
+			}
+			do_basic_render_flush(view_projection, 0);
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw fct end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		inventory start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -2689,19 +2727,24 @@ func void place_machine(s_v2i tile_index, e_machine machine)
 	game->soft_data.machine_count_arr[machine] += 1;
 }
 
-func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine machine, int currency)
+func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v2i tile_index, e_machine machine, int currency)
 {
 	if(!is_chunk_unlocked_v2i(chunk_index)) {
-		return false;
+		return e_place_result_chunk_locked;
 	}
 
-	if(game->soft_data.open_inventory_timestamp.valid) {
-		return false;
+	{
+		int dist = get_tile_distance_from_player_to_machine(player_pos, tile_index, machine);
+		b8 in_range = dist <= get_player_tile_reach();
+		if(!in_range) {
+			return e_place_result_out_of_reach;
+		}
 	}
 
 	if(!can_afford(currency, get_machine_cost(machine))) {
-		return false;
+		return e_place_result_currency;
 	}
+	e_place_result result = e_place_result_success;
 
 	int x_offset = tile_index.x - (c_biggest_machine_tile_size - 1);
 	int y_offset = tile_index.y - (c_biggest_machine_tile_size - 1);
@@ -2736,34 +2779,34 @@ func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine mach
 			s_v2i temp_chunk_index = chunk_index_from_tile_index(v2i(x, y));
 			if(mask[y - y_offset][x - x_offset] || !is_chunk_unlocked_v2i(temp_chunk_index)) {
 				collision = true;
-				goto end_loop;
 			}
-			else {
-				if(machine == e_machine_collector_1) {
-					if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_1) {
-						touches_resource = true;
-					}
+
+			if(machine == e_machine_collector_1) {
+				if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_1) {
+					touches_resource = true;
 				}
-				else if(machine == e_machine_collector_2) {
-					if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_2) {
-						touches_resource = true;
-					}
+			}
+			else if(machine == e_machine_collector_2) {
+				if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_2) {
+					touches_resource = true;
 				}
-				else if(machine == e_machine_collector_3) {
-					if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_3) {
-						touches_resource = true;
-					}
+			}
+			else if(machine == e_machine_collector_3) {
+				if(soft_data->natural_terrain_arr[y][x] == e_tile_resource_3) {
+					touches_resource = true;
 				}
 			}
 		}
 	}
-	end_loop:;
 
 	if(g_machine_data[machine].requires_resource && !touches_resource) {
-		collision = true;
+		result = e_place_result_requires_resource;
+	}
+	else if(collision) {
+		result = e_place_result_occupied;
 	}
 
-	return !collision;
+	return result;
 }
 
 func s_v2i chunk_index_from_tile_index(s_v2i tile_index)
@@ -2956,4 +2999,66 @@ func void draw_selector_center(s_v2 pos, s_v2 size, float brightness, int render
 
 	draw_rect_topleft(pos + size * v2(0.5f, 0.5f), size * v2(-thick0, -thick1), color, render_pass_index);
 	draw_rect_topleft(pos + size * v2(0.5f, 0.5f), size * v2(-thick1, -thick0), color, render_pass_index);
+}
+
+func int get_tile_distance_from_player_to_machine(s_v2 player_pos, s_v2i machine_tile_index, e_machine machine)
+{
+	int machine_size = g_machine_data[machine].size;
+	s_v2i player_tile_index = tile_index_from_pos(player_pos);
+	s_v2i arr[] = {
+		machine_tile_index, machine_tile_index + v2i(machine_size - 1, 0),
+		machine_tile_index + v2i(0, machine_size - 1), machine_tile_index + v2i(machine_size - 1, machine_size - 1),
+	};
+	int smallest_dist = 9999999;
+	for(int i = 0; i < array_count(arr); i += 1) {
+		int dist = abs(player_tile_index.x - arr[i].x) + abs(player_tile_index.y - arr[i].y);
+		if(dist < smallest_dist) {
+			smallest_dist = dist;
+		}
+	}
+	return smallest_dist;
+}
+
+func int get_player_tile_reach()
+{
+	int result = 6;
+	return result;
+}
+
+func void add_non_spammy_message(s_v2 pos, s_len_str text)
+{
+	float passed = game->render_time - game->soft_data.last_non_spammy_timestamp;
+	if(passed >= 0.5f) {
+		game->soft_data.last_non_spammy_timestamp = game->render_time;
+		s_entity fct = zero;
+		fct.prev_pos = pos;
+		fct.pos = pos;
+		fct.spawn_timestamp = game->render_time;
+		fct.text = text;
+		entity_manager_add_if_not_full(&game->soft_data.entity_arr, e_entity_fct, fct);
+	}
+}
+
+func s_len_str str_from_place_result(e_place_result place_result)
+{
+	s_len_str result = zero;
+	switch(place_result) {
+		xcase e_place_result_currency: {
+			result = format_text("Not enough X");
+		}
+		xcase e_place_result_requires_resource: {
+			result = format_text("Must be built on the appropriate resource");
+		}
+		xcase e_place_result_out_of_reach: {
+			result = format_text("Out of reach");
+		}
+		// xcase e_place_result_occupied: {
+		// 	result = format_text("Occupied");
+		// }
+		xcase e_place_result_chunk_locked: {
+			result = format_text("That area hasn't been revealed");
+		}
+		break; default: {}
+	}
+	return result;
 }
