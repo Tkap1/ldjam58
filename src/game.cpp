@@ -1270,32 +1270,55 @@ func void render(float interp_dt, float delta)
 			if(soft_data->machine_to_place.valid) {
 				e_machine machine = soft_data->machine_to_place.value;
 				s_v2i tile_index = tile_index_from_pos(world_mouse);
-				s_v2i chunk_index = chunk_index_from_pos(world_mouse);
-				s_v2 pos = c_tile_size_v * tile_index;
-				float machine_size = (float)g_machine_data[machine].size;
-				s_v2 size = c_tile_size_v * machine_size;
-				s_v2i atlas_index = g_machine_data[machine].frame_arr[0];
-				e_place_result place_result = can_we_place_machine(player.pos, chunk_index, tile_index, machine, soft_data->currency);
-				s_v4 color = make_rgb(0, 1, 0);
-				if(place_result == e_place_result_out_of_reach) {
-					color = make_rgb(0, 0, 1);
+				if(!is_key_down(c_left_shift)) {
+					soft_data->shift_start = tile_index;
 				}
-				else if(place_result != e_place_result_success) {
-					color = make_rgb(1, 0, 0);
+				s_v2i topleft = soft_data->shift_start;
+				s_v2i bottomright = tile_index;
+				if(topleft.x > bottomright.x) {
+					swap(&topleft.x, &bottomright.x);
 				}
-				s_v2 tile_center = pos + c_tile_size_v * 0.5f * machine_size;
-				draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, set_alpha(color, 0.5f), 2);
+				if(topleft.y > bottomright.y) {
+					swap(&topleft.y, &bottomright.y);
+				}
+				{
+					s_v2i curr_index = topleft;
+					while(true) {
+						s_v2i chunk_index = chunk_index_from_tile_index(curr_index);
+						s_v2 pos = c_tile_size_v * curr_index;
+						float machine_size = (float)g_machine_data[machine].size;
+						s_v2 size = c_tile_size_v * machine_size;
+						s_v2i atlas_index = g_machine_data[machine].frame_arr[0];
+						e_place_result place_result = can_we_place_machine(player.pos, chunk_index, curr_index, machine, soft_data->currency);
+						s_v4 color = make_rgb(0, 1, 0);
+						if(place_result == e_place_result_out_of_reach) {
+							color = make_rgb(0, 0, 1);
+						}
+						else if(place_result != e_place_result_success) {
+							color = make_rgb(1, 0, 0);
+						}
+						s_v2 tile_center = pos + c_tile_size_v * 0.5f * machine_size;
+						draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, set_alpha(color, 0.5f), 2);
 
-				if(!game->soft_data.open_inventory_timestamp.valid && is_key_down(c_left_button)) {
-					if(place_result == e_place_result_success) {
-						play_sound(e_sound_key, zero);
-						place_machine(tile_index, machine);
-						add_currency(-get_machine_cost(machine));
-					}
-					else {
-						s_len_str str = str_from_place_result(place_result);
-						if(str.count > 0) {
-							add_non_spammy_message(world_mouse, str);
+						if(!game->soft_data.open_inventory_timestamp.valid && is_key_down(c_left_button)) {
+							if(place_result == e_place_result_success) {
+								play_sound(e_sound_key, zero);
+								place_machine(curr_index, machine);
+								add_currency(-get_machine_cost(machine));
+							}
+							else {
+								s_len_str str = str_from_place_result(place_result);
+								if(str.count > 0) {
+									add_non_spammy_message(world_mouse, str);
+								}
+							}
+						}
+
+						curr_index.x += g_machine_data[machine].size;
+						if(curr_index.x > bottomright.x) {
+							curr_index.y += g_machine_data[machine].size;
+							curr_index.x = topleft.x;
+							if(curr_index.y > bottomright.y) { break; }
 						}
 					}
 				}
@@ -1537,6 +1560,11 @@ func void render(float interp_dt, float delta)
 			{
 				s_len_str text = format_text("10x movement speed: %s", game->fast_player_speed ? "On" : "Off");
 				do_bool_button_ex(text, container_get_pos_and_advance(&container), size, false, &game->fast_player_speed);
+			}
+
+			{
+				s_len_str text = format_text("Super reach: %s", game->player_super_reach ? "On" : "Off");
+				do_bool_button_ex(text, container_get_pos_and_advance(&container), size, false, &game->player_super_reach);
 			}
 
 			{
@@ -3023,6 +3051,9 @@ func int get_player_tile_reach()
 	s_stats stats = get_stats();
 	int result = 6;
 	result += roundfi(stats.arr[e_stat_player_tile_reach]);
+	if(game->player_super_reach) {
+		result += 100000;
+	}
 	return result;
 }
 

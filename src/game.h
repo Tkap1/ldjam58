@@ -502,6 +502,7 @@ struct s_soft_game_data
 	s_maybe<e_research> current_research;
 	b8 research_completed_arr[e_research_count];
 	int spent_on_research_arr[e_research_count];
+	s_v2i shift_start;
 };
 
 struct s_hard_game_data
@@ -530,6 +531,7 @@ struct s_render_pass
 struct s_game
 {
 	b8 fast_player_speed;
+	b8 player_super_reach;
 	b8 free_research;
 	b8 disable_damage_numbers;
 	b8 disable_gold_numbers;
