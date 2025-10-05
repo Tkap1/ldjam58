@@ -1283,6 +1283,7 @@ func void render(float interp_dt, float delta)
 				}
 				{
 					s_v2i curr_index = topleft;
+					b8 placed_something = false;
 					while(true) {
 						s_v2i chunk_index = chunk_index_from_tile_index(curr_index);
 						s_v2 pos = c_tile_size_v * curr_index;
@@ -1302,8 +1303,8 @@ func void render(float interp_dt, float delta)
 
 						if(!game->soft_data.open_inventory_timestamp.valid && is_key_down(c_left_button)) {
 							if(place_result == e_place_result_success) {
-								play_sound(e_sound_key, zero);
 								place_machine(curr_index, machine);
+								placed_something = true;
 								add_currency(-get_machine_cost(machine));
 							}
 							else {
@@ -1320,6 +1321,9 @@ func void render(float interp_dt, float delta)
 							curr_index.x = topleft.x;
 							if(curr_index.y > bottomright.y) { break; }
 						}
+					}
+					if(placed_something) {
+						play_sound(e_sound_key, zero);
 					}
 				}
 			}
