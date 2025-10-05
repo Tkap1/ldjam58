@@ -65,3 +65,8 @@ do player reach
 explain controls
 explain goal
 "passive" collectors that collect less but don't need to be placed on resource
+
+we could do the equivalent of pipes so that we dont have to deal with complexity of belts?
+	because it's kinda sad that everytihng is connected
+
+only animate researcher if we have active research

@@ -246,7 +246,11 @@ m_dll_export void init(s_platform_data* platform_data)
 	for(int i = 0; i < e_texture_count; i += 1) {
 		char* path = c_texture_path_arr[i];
 		if(strlen(path) > 0) {
-			game->texture_arr[i] = load_texture_from_file(path, GL_NEAREST);
+			u32 filter = GL_NEAREST;
+			if(i == e_texture_superku) {
+				filter = GL_LINEAR;
+			}
+			game->texture_arr[i] = load_texture_from_file(path, filter);
 		}
 	}
 
@@ -259,8 +263,8 @@ m_dll_export void init(s_platform_data* platform_data)
 		game->atlas.sprite_size = v2i(16, 16);
 
 		game->superku.texture = e_texture_superku;
-		game->superku.texture_size = v2i(1024, 516);
-		game->superku.sprite_size = v2i(256, 256);
+		game->superku.texture_size = v2i(4096, 4502);
+		game->superku.sprite_size = v2i(512, 500);
 	}
 	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		atlas end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1148,11 +1152,13 @@ func void render(float interp_dt, float delta)
 		{
 			s_rect camera_bounds = get_camera_bounds(view_inv);
 
+			static float foo = 0;
+			foo += delta * 8;
+
 			for(int chunk_y = topleft_index.y; chunk_y <= bottomright_index.y; chunk_y += 1) {
 				for(int chunk_x = topleft_index.x; chunk_x <= bottomright_index.x; chunk_x += 1) {
 					s_rng chunk_rng = make_rng(chunk_x * chunk_y);
 					// s_v4 tile_color = rand_color(&chunk_rng);
-					s_v4 tile_color = make_rrr(1);
 					s_v2i chunk_index = v2i(chunk_x, chunk_y);
 					b8 is_unlocked = is_chunk_unlocked_v2i(chunk_index);
 					b8 is_unlockable = !is_unlocked && are_any_adjacent_chunks_unlocked(chunk_index);
@@ -1161,10 +1167,12 @@ func void render(float interp_dt, float delta)
 							for(int x = chunk_x * c_chunk_size; x < chunk_x * c_chunk_size + c_chunk_size; x += 1) {
 								// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw terrain start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 								if(soft_data->natural_terrain_arr[y][x] != e_tile_none) {
-									s_v2 pos = v2(x, y) * c_tile_size;
-									// s_v4 color = make_rgb(0, 1, 0);
+									s_v2 pos = v2(x, y) * c_tile_size + c_tile_size_v * 0.5f;
 									s_v2i atlas_index = c_tile_atlas_index[soft_data->natural_terrain_arr[y][x]];
-									draw_atlas(game->atlas, pos + c_tile_size_v * 0.5f, c_tile_size_v, atlas_index, tile_color, 0);
+									s_rng rng = make_rng(x * y);
+									float rotation = randf32_11(&rng) * 0.2f;
+									s_v4 tile_color = make_rrr(randf_range(&rng, 0.8f, 1.0f) * 0.75f);
+									draw_atlas_ex(game->superku, pos, c_tile_size_v * 2.0f, atlas_index, tile_color, rotation, zero, 0);
 								}
 								// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw terrain end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1174,19 +1182,21 @@ func void render(float interp_dt, float delta)
 									if(machine != e_machine_none) {
 										s_v2i tile_index = v2i(x, y);
 										s_v2 pos = v2(x, y) * c_tile_size;
-										s_v2 size = c_tile_size_v * (float)g_machine_data[machine].size - v2(8);
-										b8 hovered = mouse_vs_rect_topleft(world_mouse, pos, size + v2(8));
-										s_v4 color = make_rrr(0.9f);
-										if(hovered) {
-											color = make_rrr(1.0f);
+										s_v2 size = c_tile_size_v * (float)g_machine_data[machine].size;
+										b8 hovered = mouse_vs_rect_topleft(world_mouse, pos, size);
+										s_v4 color = make_rrr(1);
+										s_v2 tile_center = pos + c_tile_size_v * 0.5f * (float)g_machine_data[machine].size;
+										if(hovered && !soft_data->machine_to_place.valid) {
+											draw_selector_center(tile_center, size * 1.15f * sin_range(0.95f, 1.05f, game->render_time * 20), 1.0f, 2);
 											if(soft_data->press_input.q) {
 												soft_data->press_input.q = false;
 												soft_data->machine_to_place = maybe(machine);
 											}
 										}
-										s_v2i atlas_index = g_machine_data[machine].atlas_index;
-										draw_atlas_topleft(game->atlas, pos + v2(4), size, atlas_index, color, 1);
-										if(hovered && is_key_down(c_right_button)) {
+										int frame_index = roundfi(foo) % g_machine_data[machine].frame_count;
+										s_v2i atlas_index = g_machine_data[machine].frame_arr[frame_index];
+										draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, color, 1);
+										if(hovered && !soft_data->open_inventory_timestamp.valid && is_key_down(c_right_button)) {
 											sell_machine(tile_index, machine);
 										}
 									}
@@ -1255,14 +1265,16 @@ func void render(float interp_dt, float delta)
 				s_v2i tile_index = tile_index_from_pos(world_mouse);
 				s_v2i chunk_index = chunk_index_from_pos(world_mouse);
 				s_v2 pos = c_tile_size_v * tile_index;
-				s_v2 size = c_tile_size_v * (float)g_machine_data[machine].size - v2(8);
-				s_v2i atlas_index = g_machine_data[machine].atlas_index;
+				float machine_size = (float)g_machine_data[machine].size;
+				s_v2 size = c_tile_size_v * machine_size;
+				s_v2i atlas_index = g_machine_data[machine].frame_arr[0];
 				b8 can_place = can_we_place_machine(chunk_index, tile_index, machine, soft_data->currency);
 				s_v4 color = make_rgb(0, 1, 0);
 				if(!can_place) {
 					color = make_rgb(1, 0, 0);
 				}
-				draw_atlas_topleft(game->atlas, pos + v2(4), size, atlas_index, set_alpha(color, 0.5f), 2);
+				s_v2 tile_center = pos + c_tile_size_v * 0.5f * machine_size;
+				draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, set_alpha(color, 0.5f), 2);
 
 				if(can_place && is_key_down(c_left_button)) {
 					play_sound(e_sound_key, zero);
@@ -1288,10 +1300,10 @@ func void render(float interp_dt, float delta)
 			}
 			if(temp_player->animation_time >= 0.1f) {
 				temp_player->animation_time -= 0.1f;
-				temp_player->animation_index = circular_index(temp_player->animation_index + 1, 4);
+				temp_player->animation_index = 4 + circular_index(temp_player->animation_index + 1, 4);
 			}
-			temp_player->rotation = lerp_angle(temp_player->rotation, wanted_rotation, delta * 10);
-			draw_atlas_ex(game->superku, player_pos, c_player_size_v * 2, v2i(temp_player->animation_index, 1), make_rrr(1), temp_player->rotation, zero, 0);
+			temp_player->rotation = lerp_angle(temp_player->rotation, wanted_rotation + c_pi * 0.5f, delta * 10);
+			draw_atlas_ex(game->superku, player_pos, c_player_size_v * 2, v2i(temp_player->animation_index, 7), make_rrr(1), temp_player->rotation, zero, 0);
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1316,26 +1328,28 @@ func void render(float interp_dt, float delta)
 					draw_text(S("Research"), wxy(0.7f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
 					s_v2 pos = wxy(0.1f, 0.2f);
 					for(int i = 0; i < array_count(arr); i += 1) {
-						b8 unlocked = is_machine_unlocked(arr[i]);
+						e_machine machine = arr[i];
+						b8 unlocked = is_machine_unlocked(machine);
 						b8 hovered = mouse_vs_rect_topleft(g_mouse, pos, rect_size);
 						float flash = 0.7f;
 						if(hovered) {
 							if(unlocked) {
-								game->tooltip = get_machine_tooltip(arr[i]);
+								game->tooltip = get_machine_tooltip(machine);
 							}
 							else {
 								game->tooltip = S("Research to unlock!");
 							}
 							flash = 1;
 						}
-						s_v2i atlas_index = g_machine_data[arr[i]].atlas_index;
+						s_v2i atlas_index = g_machine_data[machine].frame_arr[0];
 						if(unlocked) {
 							if(hovered && is_key_pressed(c_left_button, true)) {
-								soft_data->machine_to_place = maybe(arr[i]);
+								soft_data->machine_to_place = maybe(machine);
 								soft_data->open_inventory_timestamp = zero;
 							}
+							s_v2 rect_center = pos + rect_size * 0.5f;
+							draw_atlas(game->superku, rect_center - v2(0, 4), rect_size * 1.5f, atlas_index, make_rrr(flash), 1);
 							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(flash * 0.5f), 1);
-							draw_atlas_topleft(game->atlas, pos, rect_size, atlas_index, make_rrr(flash), 1);
 						}
 						else {
 							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(0.33f * flash), 1);
@@ -2924,4 +2938,22 @@ template <int n>
 func void builder_add_separator(s_str_builder<n>* builder)
 {
 	builder_add(builder, "$$888888--------------------$.\n");
+}
+
+func void draw_selector_center(s_v2 pos, s_v2 size, float brightness, int render_pass_index)
+{
+	s_v4 color = make_rrr(brightness);
+	float thick0 = 0.15f;
+	float thick1 = thick0 * 0.5f;
+	draw_rect_topleft(pos + size * v2(-0.5f, -0.5f), size * v2(thick0, thick1), color, render_pass_index);
+	draw_rect_topleft(pos + size * v2(-0.5f, -0.5f), size * v2(thick1, thick0), color, render_pass_index);
+
+	draw_rect_topleft(pos + size * v2(0.5f, -0.5f), size * v2(-thick0, thick1), color, render_pass_index);
+	draw_rect_topleft(pos + size * v2(0.5f, -0.5f), size * v2(-thick1, thick0), color, render_pass_index);
+
+	draw_rect_topleft(pos + size * v2(-0.5f, 0.5f), size * v2(thick0, -thick1), color, render_pass_index);
+	draw_rect_topleft(pos + size * v2(-0.5f, 0.5f), size * v2(thick1, -thick0), color, render_pass_index);
+
+	draw_rect_topleft(pos + size * v2(0.5f, 0.5f), size * v2(-thick0, -thick1), color, render_pass_index);
+	draw_rect_topleft(pos + size * v2(0.5f, 0.5f), size * v2(-thick1, -thick0), color, render_pass_index);
 }

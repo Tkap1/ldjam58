@@ -91,6 +91,7 @@ func s_len_str get_research_tooltip(e_research research);
 func s_len_str get_machine_tooltip(e_machine machine);
 template <int n>
 func void builder_add_separator(s_str_builder<n>* builder);
+func void draw_selector_center(s_v2 pos, s_v2 size, float brightness, int render_pass_index);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

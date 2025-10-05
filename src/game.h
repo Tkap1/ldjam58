@@ -239,9 +239,9 @@ enum e_tile : u8
 
 global constexpr s_v2i c_tile_atlas_index[] = {
 	zero,
-	{2, 0},
-	{8, 0},
-	{9, 0},
+	{5, 6},
+	{3, 6},
+	{4, 6},
 };
 
 data_enum(e_machine,
@@ -257,7 +257,10 @@ data_enum(e_machine,
 		.requires_resource = true,
 		.size = 2,
 		.cost = 10,
-		.atlas_index = {3, 0},
+		.frame_count = 4,
+		.frame_arr = {
+			{0, 0}, {1, 0}, {2, 0}, {3, 0},
+		},
 	}
 
 	collector_2 {
@@ -265,7 +268,10 @@ data_enum(e_machine,
 		.requires_resource = true,
 		.size = 2,
 		.cost = 1000,
-		.atlas_index = {7, 0},
+		.frame_count = 4,
+		.frame_arr = {
+			{0, 1}, {1, 1}, {2, 1}, {3, 1},
+		},
 	}
 
 	collector_3 {
@@ -273,49 +279,70 @@ data_enum(e_machine,
 		.requires_resource = true,
 		.size = 2,
 		.cost = 100000,
-		.atlas_index = {10, 0},
+		.frame_count = 4,
+		.frame_arr = {
+			{0, 2}, {1, 2}, {2, 2}, {3, 2},
+		},
 	}
 
 	processor_1 {
 		.name = S("Processor Mk1"),
 		.size = 3,
 		.cost = 20,
-		.atlas_index = {4, 0},
+		.frame_count = 1,
+		.frame_arr = {
+			{5, 0},
+		},
 	}
 
 	processor_2 {
 		.name = S("Processor Mk2"),
 		.size = 3,
 		.cost = 2000,
-		.atlas_index = {4, 1},
+		.frame_count = 1,
+		.frame_arr = {
+			{5, 1},
+		},
 	}
 
 	processor_3 {
 		.name = S("Processor Mk3"),
 		.size = 3,
 		.cost = 200000,
-		.atlas_index = {4, 2},
+		.frame_count = 1,
+		.frame_arr = {
+			{5, 2},
+		},
 	}
 
 	research_1 {
 		.name = S("Researcher Mk1"),
 		.size = 3,
 		.cost = 30,
-		.atlas_index = {5, 0},
+		.frame_count = 8,
+		.frame_arr = {
+			{0, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 3}, {5, 3}, {6, 3}, {7, 3},
+		},
 	}
 
 	research_2 {
 		.name = S("Researcher Mk2"),
 		.size = 3,
 		.cost = 3000,
-		.atlas_index = {5, 1},
+		.frame_count = 8,
+		.frame_arr = {
+			{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 4}, {7, 4},
+		},
 	}
 
 	research_3 {
 		.name = S("Researcher Mk3"),
 		.size = 3,
 		.cost = 3000,
-		.atlas_index = {5, 2},
+		.frame_count = 8,
+		.frame_arr = {
+			{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5},
+		},
 	}
 )
 
@@ -325,7 +352,8 @@ struct s_machine_data
 	b8 requires_resource;
 	int size;
 	int cost;
-	s_v2i atlas_index;
+	int frame_count;
+	s_v2i frame_arr[8];
 };
 
 data_enum(e_research,
