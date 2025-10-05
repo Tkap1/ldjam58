@@ -215,12 +215,17 @@ struct s_frame_data
 	int lives_to_lose;
 };
 
-struct s_input
+struct s_hold_input
 {
 	b8 left;
 	b8 right;
 	b8 up;
 	b8 down;
+};
+
+struct s_press_input
+{
+	b8 q;
 };
 
 enum e_tile : u8
@@ -248,6 +253,7 @@ data_enum(e_machine,
 	}
 
 	collector_1 {
+		.name = S("Collector Mk1"),
 		.requires_resource = true,
 		.size = 2,
 		.cost = 10,
@@ -255,6 +261,7 @@ data_enum(e_machine,
 	}
 
 	collector_2 {
+		.name = S("Collector Mk2"),
 		.requires_resource = true,
 		.size = 2,
 		.cost = 1000,
@@ -262,6 +269,7 @@ data_enum(e_machine,
 	}
 
 	collector_3 {
+		.name = S("Collector Mk3"),
 		.requires_resource = true,
 		.size = 2,
 		.cost = 100000,
@@ -269,32 +277,51 @@ data_enum(e_machine,
 	}
 
 	processor_1 {
+		.name = S("Processor Mk1"),
 		.size = 3,
 		.cost = 20,
 		.atlas_index = {4, 0},
 	}
 
 	processor_2 {
+		.name = S("Processor Mk2"),
 		.size = 3,
 		.cost = 2000,
 		.atlas_index = {4, 1},
 	}
 
 	processor_3 {
+		.name = S("Processor Mk3"),
 		.size = 3,
 		.cost = 200000,
 		.atlas_index = {4, 2},
 	}
 
-	research {
+	research_1 {
+		.name = S("Researcher Mk1"),
 		.size = 3,
 		.cost = 30,
 		.atlas_index = {5, 0},
+	}
+
+	research_2 {
+		.name = S("Researcher Mk2"),
+		.size = 3,
+		.cost = 3000,
+		.atlas_index = {5, 1},
+	}
+
+	research_3 {
+		.name = S("Researcher Mk3"),
+		.size = 3,
+		.cost = 3000,
+		.atlas_index = {5, 2},
 	}
 )
 
 struct s_machine_data
 {
+	s_len_str name;
 	b8 requires_resource;
 	int size;
 	int cost;
@@ -333,6 +360,13 @@ data_enum(e_research,
 		.requirement = maybe(e_research_processor_2),
 		.cost = 100000,
 	}
+	research_2 {
+		.cost = 2000,
+	}
+	research_3 {
+		.requirement = maybe(e_research_research_2),
+		.cost = 200000,
+	}
 )
 
 struct s_research_data
@@ -344,8 +378,13 @@ struct s_research_data
 
 struct s_soft_game_data
 {
+	float collector_timer;
+	float processor_timer;
+	float research_timer;
+
 	s_maybe<float> open_inventory_timestamp;
-	s_input frame_input;
+	s_hold_input hold_input;
+	s_press_input press_input;
 	int frames_to_freeze;
 	s_frame_data frame_data;
 	b8 tried_to_submit_score;
@@ -368,7 +407,6 @@ struct s_soft_game_data
 	b8 purchased_chunk_arr[c_chunk_count][c_chunk_count];
 	s_maybe<e_machine> machine_to_place;
 	int machine_count_arr[e_machine_count];
-	int process_ticks;
 	s_maybe<e_research> current_research;
 	b8 research_completed_arr[e_research_count];
 	int spent_on_research_arr[e_research_count];

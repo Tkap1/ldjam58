@@ -3,42 +3,61 @@ global constexpr s_machine_data g_machine_data[e_machine_count] = {
 
 	},
 	{
+		.name = S("Collector Mk1"),
 		.requires_resource = true,
 		.size = 2,
 		.cost = 10,
 		.atlas_index = {3, 0},
 	},
 	{
+		.name = S("Collector Mk2"),
 		.requires_resource = true,
 		.size = 2,
 		.cost = 1000,
 		.atlas_index = {7, 0},
 	},
 	{
+		.name = S("Collector Mk3"),
 		.requires_resource = true,
 		.size = 2,
 		.cost = 100000,
 		.atlas_index = {10, 0},
 	},
 	{
+		.name = S("Processor Mk1"),
 		.size = 3,
 		.cost = 20,
 		.atlas_index = {4, 0},
 	},
 	{
+		.name = S("Processor Mk2"),
 		.size = 3,
 		.cost = 2000,
 		.atlas_index = {4, 1},
 	},
 	{
+		.name = S("Processor Mk3"),
 		.size = 3,
 		.cost = 200000,
 		.atlas_index = {4, 2},
 	},
 	{
+		.name = S("Researcher Mk1"),
 		.size = 3,
 		.cost = 30,
 		.atlas_index = {5, 0},
+	},
+	{
+		.name = S("Researcher Mk2"),
+		.size = 3,
+		.cost = 3000,
+		.atlas_index = {5, 1},
+	},
+	{
+		.name = S("Researcher Mk3"),
+		.size = 3,
+		.cost = 3000,
+		.atlas_index = {5, 2},
 	},
 };
 
@@ -70,6 +89,13 @@ global constexpr s_research_data g_research_data[e_research_count] = {
 	{
 		.requirement = maybe(e_research_processor_2),
 		.cost = 100000,
+	},
+	{
+		.cost = 2000,
+	},
+	{
+		.requirement = maybe(e_research_research_2),
+		.cost = 200000,
 	},
 };
 

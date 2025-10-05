@@ -353,15 +353,20 @@ m_dll_export void do_game(s_platform_data* platform_data)
 	float game_speed = c_game_speed_arr[game->speed_index] * game->speed;
 	game->accumulator += delta64 * game_speed;
 	f64 clamped_accumulator = at_most(c_update_delay * 20, game->accumulator);
+	int update_count = 0;
 	while(clamped_accumulator >= c_update_delay) {
 		game->accumulator -= c_update_delay;
 		clamped_accumulator -= c_update_delay;
 		update();
+		update_count += 1;
 	}
 	float interp_dt = (float)(clamped_accumulator / c_update_delay);
 	render(interp_dt, (float)delta64);
 
-	game->soft_data.frame_input = zero;
+	if(update_count > 0) {
+		game->soft_data.hold_input = zero;
+	}
+	game->soft_data.press_input = zero;
 }
 
 func void input()
@@ -394,10 +399,10 @@ func void input()
 	// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		input start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	{
 		u8* keyboard_state = (u8*)SDL_GetKeyboardState(null);
-		soft_data->frame_input.left = soft_data->frame_input.left || keyboard_state[SDL_SCANCODE_A];
-		soft_data->frame_input.right = soft_data->frame_input.right || keyboard_state[SDL_SCANCODE_D];
-		soft_data->frame_input.up = soft_data->frame_input.up || keyboard_state[SDL_SCANCODE_W];
-		soft_data->frame_input.down = soft_data->frame_input.down || keyboard_state[SDL_SCANCODE_S];
+		soft_data->hold_input.left = soft_data->hold_input.left || keyboard_state[SDL_SCANCODE_A];
+		soft_data->hold_input.right = soft_data->hold_input.right || keyboard_state[SDL_SCANCODE_D];
+		soft_data->hold_input.up = soft_data->hold_input.up || keyboard_state[SDL_SCANCODE_W];
+		soft_data->hold_input.down = soft_data->hold_input.down || keyboard_state[SDL_SCANCODE_S];
 	}
 	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		input end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -457,6 +462,9 @@ func void input()
 						if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
 							toggle_maybe(&soft_data->open_inventory_timestamp, game->render_time);
 						}
+					}
+					else if(scancode == SDL_SCANCODE_Q && event.key.repeat == 0) {
+						soft_data->press_input.q = true;
 					}
 					else if((key == SDLK_ESCAPE && event.key.repeat == 0) || (key == SDLK_o && event.key.repeat == 0) || (key == SDLK_p && event.key.repeat == 0)) {
 						if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
@@ -676,9 +684,10 @@ func void update()
 		hard_data->update_count += 1;
 		soft_data->update_count += 1;
 
-		soft_data->process_ticks += 1;
-		if(soft_data->process_ticks >= 40) {
-			soft_data->process_ticks -= 40;
+		soft_data->collector_timer += delta;
+		soft_data->processor_timer += delta;
+		while(soft_data->collector_timer >= 1.33f) {
+			soft_data->collector_timer -= 1.33f;
 
 			{
 				int to_add = soft_data->machine_count_arr[e_machine_collector_1];
@@ -694,6 +703,10 @@ func void update()
 				int to_add = soft_data->machine_count_arr[e_machine_collector_3] * 100 * 100;
 				add_raw_currency(to_add);
 			}
+		}
+
+		while(soft_data->processor_timer >= 1.33f) {
+			soft_data->processor_timer -= 1.33f;
 
 			{
 				int could_process = soft_data->machine_count_arr[e_machine_processor_1] * 2;
@@ -715,9 +728,17 @@ func void update()
 				add_raw_currency(-will_process);
 				add_currency(will_process);
 			}
+		}
 
-			if(soft_data->current_research.valid) {
-				int could_process = soft_data->machine_count_arr[e_machine_research] * 3;
+		if(soft_data->current_research.valid) {
+			soft_data->research_timer += delta;
+
+			while(soft_data->research_timer >= 0.45f) {
+				soft_data->research_timer -= 0.45f;
+
+				int could_process = soft_data->machine_count_arr[e_machine_research_1];
+				could_process += soft_data->machine_count_arr[e_machine_research_2] * 100;
+				could_process += soft_data->machine_count_arr[e_machine_research_3] * 10000;
 				int will_process = min(could_process, (int)soft_data->currency);
 				if(game->free_research) {
 					will_process = 10000000;
@@ -741,16 +762,16 @@ func void update()
 			s_entity* player = &entity_arr->data[c_first_index[e_entity_player]];
 			player->walking = false;
 			s_v2 movement = zero;
-			if(soft_data->frame_input.left) {
+			if(soft_data->hold_input.left) {
 				movement.x -= 1;
 			}
-			if(soft_data->frame_input.right) {
+			if(soft_data->hold_input.right) {
 				movement.x += 1;
 			}
-			if(soft_data->frame_input.up) {
+			if(soft_data->hold_input.up) {
 				movement.y -= 1;
 			}
-			if(soft_data->frame_input.down) {
+			if(soft_data->hold_input.down) {
 				movement.y += 1;
 			}
 			if(v2_length(movement) > 0) {
@@ -1098,6 +1119,11 @@ func void render(float interp_dt, float delta)
 
 		b8 do_game_ui = true;
 
+		if(soft_data->press_input.q && soft_data->machine_to_place.valid) {
+			soft_data->machine_to_place = zero;
+			soft_data->press_input.q = false;
+		}
+
 		s_v2i topleft_index;
 		s_v2i bottomright_index;
 		{
@@ -1153,10 +1179,14 @@ func void render(float interp_dt, float delta)
 										s_v4 color = make_rrr(0.9f);
 										if(hovered) {
 											color = make_rrr(1.0f);
+											if(soft_data->press_input.q) {
+												soft_data->press_input.q = false;
+												soft_data->machine_to_place = maybe(machine);
+											}
 										}
 										s_v2i atlas_index = g_machine_data[machine].atlas_index;
 										draw_atlas_topleft(game->atlas, pos + v2(4), size, atlas_index, color, 1);
-										if(hovered && !soft_data->machine_to_place.valid && is_key_pressed(c_right_button, true)) {
+										if(hovered && is_key_down(c_right_button)) {
 											sell_machine(tile_index, machine);
 										}
 									}
@@ -1211,6 +1241,7 @@ func void render(float interp_dt, float delta)
 								if(!soft_data->open_inventory_timestamp.valid && is_key_pressed(c_left_button, true) && can_afford_chunk) {
 									unlock_chunk_v2i(chunk_index);
 									add_currency(-chunk_cost);
+									play_sound(e_sound_upgrade, zero);
 								}
 							}
 						}
@@ -1220,21 +1251,23 @@ func void render(float interp_dt, float delta)
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		placing start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			if(soft_data->machine_to_place.valid) {
+				e_machine machine = soft_data->machine_to_place.value;
 				s_v2i tile_index = tile_index_from_pos(world_mouse);
 				s_v2i chunk_index = chunk_index_from_pos(world_mouse);
 				s_v2 pos = c_tile_size_v * tile_index;
-				s_v2 size = c_tile_size_v * (float)g_machine_data[soft_data->machine_to_place.value].size - v2(8);
-				b8 can_place = can_we_place_machine(chunk_index, tile_index, soft_data->machine_to_place.value, soft_data->currency);
+				s_v2 size = c_tile_size_v * (float)g_machine_data[machine].size - v2(8);
+				s_v2i atlas_index = g_machine_data[machine].atlas_index;
+				b8 can_place = can_we_place_machine(chunk_index, tile_index, machine, soft_data->currency);
 				s_v4 color = make_rgb(0, 1, 0);
 				if(!can_place) {
 					color = make_rgb(1, 0, 0);
 				}
-				draw_atlas_topleft(game->atlas, pos + v2(4), size, v2i(0, 0), color, 1);
+				draw_atlas_topleft(game->atlas, pos + v2(4), size, atlas_index, set_alpha(color, 0.5f), 2);
 
 				if(can_place && is_key_down(c_left_button)) {
 					play_sound(e_sound_key, zero);
-					place_machine(tile_index, soft_data->machine_to_place.value);
-					add_currency(-get_machine_cost(soft_data->machine_to_place.value));
+					place_machine(tile_index, machine);
+					add_currency(-get_machine_cost(machine));
 				}
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		placing end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1276,7 +1309,8 @@ func void render(float interp_dt, float delta)
 				{
 					e_machine arr[] = {
 						e_machine_collector_1, e_machine_collector_2, e_machine_collector_3,
-						e_machine_processor_1, e_machine_processor_2, e_machine_processor_3, e_machine_research
+						e_machine_processor_1, e_machine_processor_2, e_machine_processor_3,
+						e_machine_research_1, e_machine_research_2, e_machine_research_3,
 					};
 					draw_text(S("Machines"), wxy(0.1f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
 					draw_text(S("Research"), wxy(0.7f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
@@ -1945,15 +1979,6 @@ func void cstr_into_builder(s_str_builder<n>* builder, char* str)
 	assert(len <= n);
 	memcpy(builder->str, str, len);
 	builder->count = len;
-}
-
-template <int n>
-func s_len_str builder_to_len_str(s_str_builder<n>* builder)
-{
-	s_len_str result = zero;
-	result.str = builder->str;
-	result.count = builder->count;
-	return result;
 }
 
 template <int n>
@@ -2697,7 +2722,7 @@ func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine mach
 			s_v2i temp_chunk_index = chunk_index_from_tile_index(v2i(x, y));
 			if(mask[y - y_offset][x - x_offset] || !is_chunk_unlocked_v2i(temp_chunk_index)) {
 				collision = true;
-				break;
+				goto end_loop;
 			}
 			else {
 				if(machine == e_machine_collector_1) {
@@ -2718,6 +2743,7 @@ func b8 can_we_place_machine(s_v2i chunk_index, s_v2i tile_index, e_machine mach
 			}
 		}
 	}
+	end_loop:;
 
 	if(g_machine_data[machine].requires_resource && !touches_resource) {
 		collision = true;
@@ -2765,7 +2791,19 @@ func b8 is_machine_unlocked(e_machine machine)
 			}
 		}
 
-		xcase e_machine_research: { result = true; }
+		xcase e_machine_research_1: { result = true; }
+
+		xcase e_machine_research_2: {
+			if(soft_data->research_completed_arr[e_research_research_2]) {
+				result = true;
+			}
+		}
+		xcase e_machine_research_3: {
+			if(soft_data->research_completed_arr[e_research_research_3]) {
+				result = true;
+			}
+		}
+
 		break; invalid_default_case;
 	}
 	return result;
@@ -2797,6 +2835,7 @@ func void sell_machine(s_v2i tile_index, e_machine machine)
 	remove_machine(tile_index);
 	// @Fixme(tkap, 05/10/2025): should be currency spent, not current cost
 	add_currency(get_machine_cost(machine));
+	play_sound(e_sound_key, zero);
 }
 
 func s_len_str get_research_tooltip(e_research research)
@@ -2825,6 +2864,12 @@ func s_len_str get_research_tooltip(e_research research)
 		xcase e_research_processor_3: {
 			result = format_text("Unlocks Processor Mk3");
 		}
+		xcase e_research_research_2: {
+			result = format_text("Unlocks Researcher Mk2");
+		}
+		xcase e_research_research_3: {
+			result = format_text("Unlocks Researcher Mk3");
+		}
 		break; invalid_default_case;
 	}
 	result = format_text("%.*s\nCost: %i", expand_str(result), data.cost);
@@ -2833,32 +2878,50 @@ func s_len_str get_research_tooltip(e_research research)
 
 func s_len_str get_machine_tooltip(e_machine machine)
 {
-	s_len_str result = zero;
 	s_machine_data data = g_machine_data[machine];
+	s_str_builder<2048> builder;
+	builder.count = 0;
+	builder_add(&builder, "%.*s\n", expand_str(data.name));
+	builder_add_separator(&builder);
 	switch(machine) {
 		xcase e_machine_collector_1: {
-			result = format_text("Place on resource patches to extract raw X");
+			builder_add(&builder, "Place on resource patches to extract raw X");
 		}
 		xcase e_machine_collector_2: {
-			result = format_text("Place on resource patches to extract raw X");
+			builder_add(&builder, "Place on resource patches to extract raw X");
 		}
 		xcase e_machine_collector_3: {
-			result = format_text("Place on resource patches to extract raw X");
+			builder_add(&builder, "Place on resource patches to extract raw X");
 		}
 		xcase e_machine_processor_1: {
-			result = format_text("Convert raw X into usable X");
+			builder_add(&builder, "Convert raw X into usable X");
 		}
 		xcase e_machine_processor_2: {
-			result = format_text("Convert raw X into usable X");
+			builder_add(&builder, "Convert raw X into usable X");
 		}
 		xcase e_machine_processor_3: {
-			result = format_text("Convert raw X into usable X");
+			builder_add(&builder, "Convert raw X into usable X");
 		}
-		xcase e_machine_research: {
-			result = format_text("Research new technology");
+		xcase e_machine_research_1: {
+			builder_add(&builder, "Research new technology");
+		}
+		xcase e_machine_research_2: {
+			builder_add(&builder, "Research new technology, but faster");
+		}
+		xcase e_machine_research_3: {
+			builder_add(&builder, "Research new technology, but even faster");
 		}
 		break; invalid_default_case;
 	}
-	result = format_text("%.*s\nCost: %i", expand_str(result), data.cost);
+	builder_add(&builder, "\n");
+	builder_add_separator(&builder);
+	builder_add(&builder, "Cost: %i", data.cost);
+	s_len_str result = builder_to_len_str_alloc(&builder, &game->render_frame_arena);
 	return result;
+}
+
+template <int n>
+func void builder_add_separator(s_str_builder<n>* builder)
+{
+	builder_add(builder, "$$888888--------------------$.\n");
 }
