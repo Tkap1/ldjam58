@@ -47,8 +47,6 @@ could have a machine that collects without the need for resources, but it does s
 leaderboard id
 reenable loeaderboard call inside init
 
-break is bad on canweplacemachine
-
 maybe you collect cards? and they give you stuff. so they serve as the progression and the upgrades??
 
 tooltips for machines
@@ -61,7 +59,6 @@ beacon-style thing?
 give a name to currency?
 particles
 lights
-do player reach
 explain controls
 explain goal
 "passive" collectors that collect less but don't need to be placed on resource
@@ -70,3 +67,6 @@ we could do the equivalent of pipes so that we dont have to deal with complexity
 	because it's kinda sad that everytihng is connected
 
 only animate researcher if we have active research
+balance prices
+
+could have 3 different types of currencies so that what we built before is not irrelevant?

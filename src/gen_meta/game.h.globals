@@ -91,17 +91,49 @@ global constexpr s_machine_data g_machine_data[e_machine_count] = {
 global constexpr s_research_data g_research_data[e_research_count] = {
 	{
 		.cost = 20,
+		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 20
 	},
 	{
 		.requirement = maybe(e_research_player_speed_1),
 		.cost = 100,
+		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 60,
 	},
 	{
 		.requirement = maybe(e_research_player_speed_2),
 		.cost = 1000,
+		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 100,
+	},
+	{
+		.requirement = maybe(e_research_player_speed_3),
+		.cost = 3000,
+		.target_stat = maybe(e_stat_player_movement_speed),
+		.value = 300,
+	},
+	{
+		.cost = 20,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 2
+	},
+	{
+		.requirement = maybe(e_research_player_tile_reach_1),
+		.cost = 100,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 4,
+	},
+	{
+		.requirement = maybe(e_research_player_tile_reach_2),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 10,
+	},
+	{
+		.requirement = maybe(e_research_player_tile_reach_3),
+		.cost = 2000,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 50,
 	},
 	{
 		.cost = 1000,

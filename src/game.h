@@ -371,24 +371,70 @@ struct s_machine_data
 	s_v2i frame_arr[8];
 };
 
+enum e_stat
+{
+	e_stat_player_movement_speed,
+	e_stat_player_tile_reach,
+	e_stat_count,
+};
+
+struct s_stats
+{
+	float arr[e_stat_count];
+};
+
 data_enum(e_research,
 	s_research_data
 	g_research_data
 
 	player_speed_1 {
 		.cost = 20,
+		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 20
 	}
 	player_speed_2 {
 		.requirement = maybe(e_research_player_speed_1),
 		.cost = 100,
+		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 60,
 	}
 	player_speed_3 {
 		.requirement = maybe(e_research_player_speed_2),
 		.cost = 1000,
+		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 100,
 	}
+	player_speed_4 {
+		.requirement = maybe(e_research_player_speed_3),
+		.cost = 3000,
+		.target_stat = maybe(e_stat_player_movement_speed),
+		.value = 300,
+	}
+
+	player_tile_reach_1 {
+		.cost = 20,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 2
+	}
+	player_tile_reach_2 {
+		.requirement = maybe(e_research_player_tile_reach_1),
+		.cost = 100,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 4,
+	}
+	player_tile_reach_3 {
+		.requirement = maybe(e_research_player_tile_reach_2),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 10,
+	}
+	player_tile_reach_4 {
+		.requirement = maybe(e_research_player_tile_reach_3),
+		.cost = 2000,
+		.target_stat = maybe(e_stat_player_tile_reach),
+		.value = 50,
+	}
+
 	collector_2 {
 		.cost = 1000,
 	}
@@ -416,6 +462,7 @@ struct s_research_data
 {
 	s_maybe<e_research> requirement;
 	int cost;
+	s_maybe<e_stat> target_stat;
 	float value;
 };
 

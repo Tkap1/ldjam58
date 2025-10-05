@@ -96,6 +96,7 @@ func int get_tile_distance_from_player_to_machine(s_v2 player_pos, s_v2i machine
 func int get_player_tile_reach();
 func void add_non_spammy_message(s_v2 pos, s_len_str text);
 func s_len_str str_from_place_result(e_place_result place_result);
+func s_stats get_stats();
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

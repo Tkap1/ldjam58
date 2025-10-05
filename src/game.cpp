@@ -1223,7 +1223,6 @@ func void render(float interp_dt, float delta)
 							b8 can_afford_chunk = can_afford(soft_data->currency, chunk_cost);
 							{
 								constexpr float font_size = 128;
-								s_v4 color = make_rrr(1);
 								s_len_str text = format_text("$$FFFFFF%i$.", chunk_cost);
 								if(!can_afford_chunk) {
 									text = format_text("$$FF0000%i$.", chunk_cost);
@@ -1254,7 +1253,7 @@ func void render(float interp_dt, float delta)
 								draw_text(text, text_pos, font_size, make_rrr(1), true, &game->font, zero, 2);
 							}
 
-							if(mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
+							if(!soft_data->machine_to_place.valid && mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
 								draw_atlas(game->atlas, chunk_rect.pos + chunk_rect.size * 0.5f, chunk_rect.size, v2i(0, 0), make_rrr(0.2f), 0);
 								if(!soft_data->open_inventory_timestamp.valid && is_key_pressed(c_left_button, true) && can_afford_chunk) {
 									unlock_chunk_v2i(chunk_index);
@@ -1513,7 +1512,7 @@ func void render(float interp_dt, float delta)
 				rect_pos = topleft_to_bottomleft_mouse(rect_pos, size, g_mouse);
 				rect_pos = prevent_offscreen(rect_pos, size);
 				s_v2 text_pos = rect_pos + v2(8);
-				draw_rect_topleft(rect_pos, size, make_ra(0.0f, 0.95f), 0);
+				draw_rect_topleft(rect_pos, size, make_ra(0.1f, 0.95f), 0);
 				draw_text(game->tooltip, text_pos, font_size, make_rrr(1), false, &game->font, zero, 0);
 				{
 					s_render_flush_data data = make_render_flush_data(zero, zero);
@@ -2567,25 +2566,12 @@ func void do_lerpable_snap(s_lerpable* lerpable, float dt, float max_diff)
 
 func float get_player_speed()
 {
+	s_stats stats = get_stats();
 	float result = c_base_player_speed;
 	if(game->fast_player_speed) {
 		result *= 10;
 	}
-
-	float inc = 0;
-	e_research arr[] = {
-		e_research_player_speed_1,
-		e_research_player_speed_2,
-		e_research_player_speed_3,
-	};
-	for(int i = 0; i < array_count(arr); i += 1) {
-		e_research r = arr[i];
-		if(game->soft_data.research_completed_arr[r]) {
-			inc += g_research_data[r].value;
-		}
-	}
-
-	result *= 1 + inc / 100.0f;
+	result *= 1.0f + stats.arr[e_stat_player_movement_speed] / 100.0f;
 	return result;
 }
 
@@ -2774,11 +2760,15 @@ func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v
 	int max_y = at_most(c_max_tiles - 1, tile_index.y + to_place_size - 1);
 	b8 collision = false;
 	b8 touches_resource = false;
+	b8 touches_unlocked_chunk = false;
 	for(int y = tile_index.y; y <= max_y; y += 1) {
 		for(int x = tile_index.x; x <= max_x; x += 1) {
 			s_v2i temp_chunk_index = chunk_index_from_tile_index(v2i(x, y));
-			if(mask[y - y_offset][x - x_offset] || !is_chunk_unlocked_v2i(temp_chunk_index)) {
+			if(mask[y - y_offset][x - x_offset]) {
 				collision = true;
+			}
+			if(!is_chunk_unlocked_v2i(temp_chunk_index)) {
+				touches_unlocked_chunk = true;
 			}
 
 			if(machine == e_machine_collector_1) {
@@ -2801,6 +2791,9 @@ func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v
 
 	if(g_machine_data[machine].requires_resource && !touches_resource) {
 		result = e_place_result_requires_resource;
+	}
+	else if(touches_unlocked_chunk) {
+		result = e_place_result_chunk_locked;
 	}
 	else if(collision) {
 		result = e_place_result_occupied;
@@ -2900,15 +2893,21 @@ func s_len_str get_research_tooltip(e_research research)
 	s_len_str result = zero;
 	s_research_data data = g_research_data[research];
 	switch(research) {
-		xcase e_research_player_speed_1: {
+
+		case e_research_player_speed_1:
+		case e_research_player_speed_2:
+		case e_research_player_speed_3:
+		case e_research_player_speed_4: {
 			result = format_text("+%.0f%% player movement speed", data.value);
-		}
-		xcase e_research_player_speed_2: {
-			result = format_text("+%.0f%% player movement speed", data.value);
-		}
-		xcase e_research_player_speed_3: {
-			result = format_text("+%.0f%% player movement speed", data.value);
-		}
+		} break;
+
+		case e_research_player_tile_reach_1:
+		case e_research_player_tile_reach_2:
+		case e_research_player_tile_reach_3:
+		case e_research_player_tile_reach_4: {
+			result = format_text("+%.0f player tile reach", data.value);
+		} break;
+
 		xcase e_research_collector_2: {
 			result = format_text("Unlocks Collector Mk2");
 		}
@@ -3021,7 +3020,9 @@ func int get_tile_distance_from_player_to_machine(s_v2 player_pos, s_v2i machine
 
 func int get_player_tile_reach()
 {
+	s_stats stats = get_stats();
 	int result = 6;
+	result += roundfi(stats.arr[e_stat_player_tile_reach]);
 	return result;
 }
 
@@ -3056,9 +3057,21 @@ func s_len_str str_from_place_result(e_place_result place_result)
 		// 	result = format_text("Occupied");
 		// }
 		xcase e_place_result_chunk_locked: {
-			result = format_text("That area hasn't been revealed");
+			result = format_text("This area hasn't been revealed");
 		}
 		break; default: {}
+	}
+	return result;
+}
+
+func s_stats get_stats()
+{
+	s_stats result = zero;
+	for_enum(research_i, e_research) {
+		s_research_data data = g_research_data[research_i];
+		if(data.target_stat.valid && game->soft_data.research_completed_arr[research_i]) {
+			result.arr[data.target_stat.value] += data.value;
+		}
 	}
 	return result;
 }
