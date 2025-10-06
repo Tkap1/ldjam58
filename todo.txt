@@ -52,9 +52,6 @@ maybe you collect cards? and they give you stuff. so they serve as the progressi
 tooltips for machines
 
 power??
-research to collect faster
-research to process faster
-research to research faster
 beacon-style thing?
 give a name to currency?
 particles

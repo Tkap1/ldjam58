@@ -157,6 +157,57 @@ global constexpr s_research_data g_research_data[e_research_count] = {
 		.cost = 200000,
 	},
 	{
+		.cost = 100,
+		.target_stat = maybe(e_stat_collector_speed),
+		.value = 25,
+	},
+	{
+		.requirement = maybe(e_research_collector_speed_1),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_collector_speed),
+		.value = 50,
+	},
+	{
+		.requirement = maybe(e_research_collector_speed_2),
+		.cost = 20000,
+		.target_stat = maybe(e_stat_collector_speed),
+		.value = 100,
+	},
+	{
+		.cost = 100,
+		.target_stat = maybe(e_stat_processor_speed),
+		.value = 25,
+	},
+	{
+		.requirement = maybe(e_research_processor_speed_1),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_processor_speed),
+		.value = 50,
+	},
+	{
+		.requirement = maybe(e_research_processor_speed_2),
+		.cost = 20000,
+		.target_stat = maybe(e_stat_processor_speed),
+		.value = 100,
+	},
+	{
+		.cost = 100,
+		.target_stat = maybe(e_stat_research_speed),
+		.value = 25,
+	},
+	{
+		.requirement = maybe(e_research_research_speed_1),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_research_speed),
+		.value = 50,
+	},
+	{
+		.requirement = maybe(e_research_research_speed_2),
+		.cost = 20000,
+		.target_stat = maybe(e_stat_research_speed),
+		.value = 100,
+	},
+	{
 		.cost = 2000000,
 	},
 };

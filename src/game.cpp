@@ -688,8 +688,8 @@ func void update()
 		hard_data->update_count += 1;
 		soft_data->update_count += 1;
 
-		soft_data->collector_timer += delta;
-		soft_data->processor_timer += delta;
+		s_stats stats = get_stats();
+		soft_data->collector_timer += delta * (1.0f + stats.arr[e_stat_collector_speed] / 100.0f);
 		while(soft_data->collector_timer >= 1.33f) {
 			soft_data->collector_timer -= 1.33f;
 
@@ -709,6 +709,7 @@ func void update()
 			}
 		}
 
+		soft_data->processor_timer += delta * (1.0f + stats.arr[e_stat_processor_speed] / 100.0f);
 		while(soft_data->processor_timer >= 1.33f) {
 			soft_data->processor_timer -= 1.33f;
 
@@ -735,7 +736,7 @@ func void update()
 		}
 
 		if(soft_data->current_research.valid) {
-			soft_data->research_timer += delta;
+			soft_data->research_timer += delta * (1.0f + stats.arr[e_stat_research_speed] / 100.0f);
 
 			while(soft_data->research_timer >= 0.45f) {
 				soft_data->research_timer -= 0.45f;
@@ -1282,10 +1283,14 @@ func void render(float interp_dt, float delta)
 				s_v2i topleft = soft_data->shift_start;
 				s_v2i bottomright = tile_index;
 				if(topleft.x > bottomright.x) {
+					int m = (topleft.x - bottomright.x) % g_machine_data[machine].size;
 					swap(&topleft.x, &bottomright.x);
+					topleft.x += m;
 				}
 				if(topleft.y > bottomright.y) {
+					int m = (topleft.y - bottomright.y) % g_machine_data[machine].size;
 					swap(&topleft.y, &bottomright.y);
+					topleft.y += m;
 				}
 				{
 					s_v2i curr_index = topleft;
@@ -2963,7 +2968,25 @@ func s_len_str get_research_tooltip(e_research research)
 		}
 		xcase e_research_research_3: {
 			result = format_text("Unlocks Researcher Mk3");
-		}
+		} break;
+
+		case e_research_collector_speed_1:
+		case e_research_collector_speed_2:
+		case e_research_collector_speed_3: {
+			result = format_text("+%.0f%% collector speed", data.value);
+		} break;
+
+		case e_research_processor_speed_1:
+		case e_research_processor_speed_2:
+		case e_research_processor_speed_3: {
+			result = format_text("+%.0f%% processor speed", data.value);
+		} break;
+
+		case e_research_research_speed_1:
+		case e_research_research_speed_2:
+		case e_research_research_speed_3: {
+			result = format_text("+%.0f%% researcher speed", data.value);
+		} break;
 
 		xcase e_research_win: {
 			result = format_text("This is it. YOU ARE THE COLLECTOR!");

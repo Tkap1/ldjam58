@@ -375,6 +375,9 @@ enum e_stat
 {
 	e_stat_player_movement_speed,
 	e_stat_player_tile_reach,
+	e_stat_collector_speed,
+	e_stat_processor_speed,
+	e_stat_research_speed,
 	e_stat_count,
 };
 
@@ -455,6 +458,60 @@ data_enum(e_research,
 	research_3 {
 		.requirement = maybe(e_research_research_2),
 		.cost = 200000,
+	}
+
+	collector_speed_1 {
+		.cost = 100,
+		.target_stat = maybe(e_stat_collector_speed),
+		.value = 25,
+	}
+	collector_speed_2 {
+		.requirement = maybe(e_research_collector_speed_1),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_collector_speed),
+		.value = 50,
+	}
+	collector_speed_3 {
+		.requirement = maybe(e_research_collector_speed_2),
+		.cost = 20000,
+		.target_stat = maybe(e_stat_collector_speed),
+		.value = 100,
+	}
+
+	processor_speed_1 {
+		.cost = 100,
+		.target_stat = maybe(e_stat_processor_speed),
+		.value = 25,
+	}
+	processor_speed_2 {
+		.requirement = maybe(e_research_processor_speed_1),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_processor_speed),
+		.value = 50,
+	}
+	processor_speed_3 {
+		.requirement = maybe(e_research_processor_speed_2),
+		.cost = 20000,
+		.target_stat = maybe(e_stat_processor_speed),
+		.value = 100,
+	}
+
+	research_speed_1 {
+		.cost = 100,
+		.target_stat = maybe(e_stat_research_speed),
+		.value = 25,
+	}
+	research_speed_2 {
+		.requirement = maybe(e_research_research_speed_1),
+		.cost = 1000,
+		.target_stat = maybe(e_stat_research_speed),
+		.value = 50,
+	}
+	research_speed_3 {
+		.requirement = maybe(e_research_research_speed_2),
+		.cost = 20000,
+		.target_stat = maybe(e_stat_research_speed),
+		.value = 100,
 	}
 
 	win {
