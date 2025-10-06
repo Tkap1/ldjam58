@@ -86,6 +86,33 @@ global constexpr s_machine_data g_machine_data[e_machine_count] = {
 			{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5},
 		},
 	},
+	{
+		.name = S("Pure collector Mk1"),
+		.size = 1,
+		.cost = 20,
+		.frame_count = 1,
+		.frame_arr = {
+			{7, 0},
+		},
+	},
+	{
+		.name = S("Pure collector Mk2"),
+		.size = 1,
+		.cost = 2000,
+		.frame_count = 1,
+		.frame_arr = {
+			{7, 1},
+		},
+	},
+	{
+		.name = S("Pure collector Mk3"),
+		.size = 1,
+		.cost = 200000,
+		.frame_count = 1,
+		.frame_arr = {
+			{7, 2},
+		},
+	},
 };
 
 global constexpr s_research_data g_research_data[e_research_count] = {
@@ -139,6 +166,9 @@ global constexpr s_research_data g_research_data[e_research_count] = {
 		.cost = 1000,
 	},
 	{
+		.cost = 1000,
+	},
+	{
 		.requirement = maybe(e_research_collector_2),
 		.cost = 100000,
 	},
@@ -155,6 +185,14 @@ global constexpr s_research_data g_research_data[e_research_count] = {
 	{
 		.requirement = maybe(e_research_research_2),
 		.cost = 200000,
+	},
+	{
+		.requirement = maybe(e_research_pure_collector_1),
+		.cost = 10000,
+	},
+	{
+		.requirement = maybe(e_research_pure_collector_2),
+		.cost = 100000,
 	},
 	{
 		.cost = 100,

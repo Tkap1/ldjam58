@@ -68,3 +68,9 @@ balance prices
 
 could have 3 different types of currencies so that what we built before is not irrelevant?
 fancy text on win research?
+
+animate gaining resource
+
+show research that we can't get with question mark
+
+juice it up so it at least feels good even though the gameplay loop is trash

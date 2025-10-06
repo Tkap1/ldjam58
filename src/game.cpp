@@ -695,18 +695,20 @@ func void update()
 
 			{
 				int to_add = soft_data->machine_count_arr[e_machine_collector_1];
+				to_add += soft_data->machine_count_arr[e_machine_collector_2] * 5;
+				to_add += soft_data->machine_count_arr[e_machine_collector_3] * 5 * 5;
 				add_raw_currency(to_add);
 			}
+		}
 
-			{
-				int to_add = soft_data->machine_count_arr[e_machine_collector_2] * 100;
-				add_raw_currency(to_add);
-			}
+		soft_data->pure_collector_timer += delta * (1.0f + stats.arr[e_stat_collector_speed] / 100.0f);
+		while(soft_data->pure_collector_timer >= 1.33f * 5) {
+			soft_data->pure_collector_timer -= 1.33f * 5;
 
-			{
-				int to_add = soft_data->machine_count_arr[e_machine_collector_3] * 100 * 100;
-				add_raw_currency(to_add);
-			}
+			int to_add = soft_data->machine_count_arr[e_machine_pure_collector_1];
+			to_add += soft_data->machine_count_arr[e_machine_pure_collector_2] * 5;
+			to_add += soft_data->machine_count_arr[e_machine_pure_collector_3] * 5 * 5;
+			add_currency(to_add);
 		}
 
 		soft_data->processor_timer += delta * (1.0f + stats.arr[e_stat_processor_speed] / 100.0f);
@@ -715,20 +717,8 @@ func void update()
 
 			{
 				int could_process = soft_data->machine_count_arr[e_machine_processor_1] * 2;
-				int will_process = min(could_process, soft_data->raw_currency);
-				add_raw_currency(-will_process);
-				add_currency(will_process);
-			}
-
-			{
-				int could_process = soft_data->machine_count_arr[e_machine_processor_2] * 200;
-				int will_process = min(could_process, soft_data->raw_currency);
-				add_raw_currency(-will_process);
-				add_currency(will_process);
-			}
-
-			{
-				int could_process = soft_data->machine_count_arr[e_machine_processor_3] * 20000;
+				could_process += soft_data->machine_count_arr[e_machine_processor_2] * 2 * 5;
+				could_process += soft_data->machine_count_arr[e_machine_processor_2] * 2 * 5 * 5;
 				int will_process = min(could_process, soft_data->raw_currency);
 				add_raw_currency(-will_process);
 				add_currency(will_process);
@@ -1403,10 +1393,12 @@ func void render(float interp_dt, float delta)
 						e_machine_collector_1, e_machine_collector_2, e_machine_collector_3,
 						e_machine_processor_1, e_machine_processor_2, e_machine_processor_3,
 						e_machine_research_1, e_machine_research_2, e_machine_research_3,
+						e_machine_pure_collector_1, e_machine_pure_collector_2, e_machine_pure_collector_3,
 					};
 					draw_text(S("Machines"), wxy(0.1f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
 					draw_text(S("Research"), wxy(0.7f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
-					s_v2 pos = wxy(0.1f, 0.2f);
+					s_v2 base_pos = wxy(0.1f, 0.2f);
+					s_v2 pos = base_pos;
 					for(int i = 0; i < array_count(arr); i += 1) {
 						e_machine machine = arr[i];
 						b8 unlocked = is_machine_unlocked(machine);
@@ -1436,6 +1428,10 @@ func void render(float interp_dt, float delta)
 							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(1, 0), make_rrr(1.0f * flash), 2);
 						}
 						pos.x += 80;
+						if((i + 1) % 3 == 0) {
+							pos.x = base_pos.x;
+							pos.y += 80;
+						}
 					}
 				}
 
@@ -2864,6 +2860,7 @@ func b8 is_machine_unlocked(e_machine machine)
 	s_soft_game_data* soft_data = &game->soft_data;
 	b8 result = false;
 	switch(machine) {
+
 		xcase e_machine_collector_1: { result = true; }
 		xcase e_machine_collector_2: {
 			if(soft_data->research_completed_timestamp_arr[e_research_collector_2].valid) {
@@ -2875,8 +2872,24 @@ func b8 is_machine_unlocked(e_machine machine)
 				result = true;
 			}
 		}
-		xcase e_machine_processor_1: { result = true; }
 
+		xcase e_machine_pure_collector_1: {
+			if(soft_data->research_completed_timestamp_arr[e_research_pure_collector_1].valid) {
+				result = true;
+			}
+		}
+		xcase e_machine_pure_collector_2: {
+			if(soft_data->research_completed_timestamp_arr[e_research_pure_collector_2].valid) {
+				result = true;
+			}
+		}
+		xcase e_machine_pure_collector_3: {
+			if(soft_data->research_completed_timestamp_arr[e_research_pure_collector_3].valid) {
+				result = true;
+			}
+		}
+
+		xcase e_machine_processor_1: { result = true; }
 		xcase e_machine_processor_2: {
 			if(soft_data->research_completed_timestamp_arr[e_research_processor_2].valid) {
 				result = true;
@@ -2962,12 +2975,24 @@ func s_len_str get_research_tooltip(e_research research)
 		xcase e_research_collector_3: {
 			result = format_text("Unlocks Collector Mk3");
 		}
+
+		xcase e_research_pure_collector_1: {
+			result = format_text("Unlocks Pure collector Mk1");
+		}
+		xcase e_research_pure_collector_2: {
+			result = format_text("Unlocks Pure collector Mk2");
+		}
+		xcase e_research_pure_collector_3: {
+			result = format_text("Unlocks Pure collector Mk3");
+		}
+
 		xcase e_research_processor_2: {
 			result = format_text("Unlocks Processor Mk2");
 		}
 		xcase e_research_processor_3: {
 			result = format_text("Unlocks Processor Mk3");
 		}
+
 		xcase e_research_research_2: {
 			result = format_text("Unlocks Researcher Mk2");
 		}
@@ -3012,31 +3037,40 @@ func s_len_str get_machine_tooltip(e_machine machine)
 	builder_add_separator(&builder);
 	switch(machine) {
 		xcase e_machine_collector_1: {
-			builder_add(&builder, "Place on resource patches to extract raw X");
+			builder_add(&builder, "Place on rockum to collect raw energy");
 		}
 		xcase e_machine_collector_2: {
-			builder_add(&builder, "Place on resource patches to extract raw X");
+			builder_add(&builder, "Place on warum to collect a lot of raw energy");
 		}
 		xcase e_machine_collector_3: {
-			builder_add(&builder, "Place on resource patches to extract raw X");
+			builder_add(&builder, "Place on starum to collect a huge amount raw energy");
 		}
 		xcase e_machine_processor_1: {
-			builder_add(&builder, "Convert raw X into usable X");
+			builder_add(&builder, "Convert raw energy into pure energy");
 		}
 		xcase e_machine_processor_2: {
-			builder_add(&builder, "Convert raw X into usable X");
+			builder_add(&builder, "Convert raw energy into pure energy, but faster");
 		}
 		xcase e_machine_processor_3: {
-			builder_add(&builder, "Convert raw X into usable X");
+			builder_add(&builder, "Convert raw energy into pure energy, but even faster");
 		}
 		xcase e_machine_research_1: {
-			builder_add(&builder, "Research new technology");
+			builder_add(&builder, "Researches new technology using pure energy");
 		}
 		xcase e_machine_research_2: {
-			builder_add(&builder, "Research new technology, but faster");
+			builder_add(&builder, "Researches new technology, but faster");
 		}
 		xcase e_machine_research_3: {
-			builder_add(&builder, "Research new technology, but even faster");
+			builder_add(&builder, "Researches new technology, but even faster");
+		}
+		xcase e_machine_pure_collector_1: {
+			builder_add(&builder, "Turn air into pure energy, very slowly");
+		}
+		xcase e_machine_pure_collector_2: {
+			builder_add(&builder, "Turn air into pure energy, not as slow");
+		}
+		xcase e_machine_pure_collector_3: {
+			builder_add(&builder, "Turn air into pure energy");
 		}
 		break; invalid_default_case;
 	}
@@ -3119,7 +3153,7 @@ func s_len_str str_from_place_result(e_place_result place_result)
 	s_len_str result = zero;
 	switch(place_result) {
 		xcase e_place_result_currency: {
-			result = format_text("Not enough X");
+			result = format_text("Not enough pure energy");
 		}
 		xcase e_place_result_requires_resource: {
 			result = format_text("Must be built on the appropriate resource");

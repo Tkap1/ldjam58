@@ -359,6 +359,37 @@ data_enum(e_machine,
 			{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5},
 		},
 	}
+
+	pure_collector_1 {
+		.name = S("Pure collector Mk1"),
+		.size = 1,
+		.cost = 20,
+		.frame_count = 1,
+		.frame_arr = {
+			{7, 0},
+		},
+	}
+
+	pure_collector_2 {
+		.name = S("Pure collector Mk2"),
+		.size = 1,
+		.cost = 2000,
+		.frame_count = 1,
+		.frame_arr = {
+			{7, 1},
+		},
+	}
+
+	pure_collector_3 {
+		.name = S("Pure collector Mk3"),
+		.size = 1,
+		.cost = 200000,
+		.frame_count = 1,
+		.frame_arr = {
+			{7, 2},
+		},
+	}
+
 )
 
 struct s_machine_data
@@ -438,6 +469,10 @@ data_enum(e_research,
 		.value = 50,
 	}
 
+	pure_collector_1 {
+		.cost = 1000,
+	}
+
 	collector_2 {
 		.cost = 1000,
 	}
@@ -445,6 +480,7 @@ data_enum(e_research,
 		.requirement = maybe(e_research_collector_2),
 		.cost = 100000,
 	}
+
 	processor_2 {
 		.cost = 1000,
 	}
@@ -452,12 +488,22 @@ data_enum(e_research,
 		.requirement = maybe(e_research_processor_2),
 		.cost = 100000,
 	}
+
 	research_2 {
 		.cost = 2000,
 	}
 	research_3 {
 		.requirement = maybe(e_research_research_2),
 		.cost = 200000,
+	}
+
+	pure_collector_2 {
+		.requirement = maybe(e_research_pure_collector_1),
+		.cost = 10000,
+	}
+	pure_collector_3 {
+		.requirement = maybe(e_research_pure_collector_2),
+		.cost = 100000,
 	}
 
 	collector_speed_1 {
@@ -530,6 +576,7 @@ struct s_research_data
 struct s_soft_game_data
 {
 	float collector_timer;
+	float pure_collector_timer;
 	float processor_timer;
 	float research_timer;
 
