@@ -55,8 +55,6 @@ polish:
 	smooth zoom
 
 balance prices
-
-icon for pure and raw
 mention ctrl + r
 
 

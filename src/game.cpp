@@ -1595,13 +1595,33 @@ func void render(float interp_dt, float delta)
 			}
 
 			{
-				s_len_str text = format_text("Pure: %i", soft_data->currency);
-				draw_text(text, container_get_pos_and_advance(&container), 48, make_rrr(1), false, &game->font, zero, 0);
+				s_v2 pos = container_get_pos_and_advance(&container);
+				s_v2 size = v2(48);
+				s_v2 icon_pos = pos + size * 0.5f;
+				s_v2 icon_size = size * 1.75f;
+				draw_atlas(game->superku, icon_pos, icon_size, v2i(7, 6), make_rrr(1), 0);
+				pos.x += size.x + 4;
+				s_len_str text = format_text("%i", soft_data->currency);
+				draw_text(text, pos, 48, make_rrr(1), false, &game->font, zero, 0);
+
+				if(!soft_data->open_inventory_timestamp.valid && mouse_vs_rect_center(g_mouse, icon_pos, size)) {
+					game->tooltip = S("Pure energy");
+				}
 			}
 
 			{
-				s_len_str text = format_text("Raw: %i", soft_data->raw_currency);
-				draw_text(text, container_get_pos_and_advance(&container), 48, make_rrr(1), false, &game->font, zero, 0);
+				s_v2 pos = container_get_pos_and_advance(&container);
+				s_v2 size = v2(48);
+				s_v2 icon_pos = pos + size * 0.5f;
+				s_v2 icon_size = size * 1.75f;
+				draw_atlas(game->superku, icon_pos, icon_size, v2i(6, 6), make_rrr(1), 0);
+				pos.x += size.x + 4;
+				s_len_str text = format_text("%i", soft_data->raw_currency);
+				draw_text(text, pos, 48, make_rrr(1), false, &game->font, zero, 0);
+
+				if(!soft_data->open_inventory_timestamp.valid && mouse_vs_rect_center(g_mouse, icon_pos, size)) {
+					game->tooltip = S("Raw energy");
+				}
 			}
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		research progress bar start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1640,7 +1660,15 @@ func void render(float interp_dt, float delta)
 				p = ease_out_back_advanced(p, 0, 0.33f, 0, 1);
 				draw_rect(c_world_center, c_world_center * 1.75f * p, make_ra(0.0f, 0.75f), 0);
 
+				{
+					draw_atlas(game->superku, wxy(0.45f, 0.2f), v2(220 * p), v2i(6, 0), make_rrr(1), 0);
+					draw_atlas(game->superku, wxy(0.45f, 0.5f), v2(220 * p), v2i(6, 1), make_rrr(1), 0);
+					draw_atlas(game->superku, wxy(0.45f, 0.8f), v2(220 * p), v2i(6, 2), make_rrr(1), 0);
+				}
+
+
 				s_v2 rect_size = v2(64) * p;
+
 				{
 					e_machine arr[] = {
 						e_machine_collector_1, e_machine_collector_2, e_machine_collector_3,
@@ -1718,6 +1746,7 @@ func void render(float interp_dt, float delta)
 							flash = sin_range(0.5f, 1.0f, game->render_time * 15);
 						}
 						s_v4 color = make_rrr(flash);
+						draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(flash * 0.5f), 0);
 						draw_atlas_topleft(game->atlas, pos, rect_size, v2i(6, 0), color, 1);
 
 						if(hovered && is_key_pressed(c_left_button, true)) {
