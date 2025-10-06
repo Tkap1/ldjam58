@@ -116,6 +116,7 @@ m_dll_export void init(s_platform_data* platform_data)
 	game->reload_shaders = true;
 	game->speed = 0;
 	game->music_speed = {1, 1};
+	game->soft_data.zoom = 1;
 
 	if(!c_on_web) {
 		game->disable_music = true;
@@ -722,7 +723,7 @@ func void update()
 			{
 				int could_process = soft_data->machine_count_arr[e_machine_processor_1] * 2;
 				could_process += soft_data->machine_count_arr[e_machine_processor_2] * 2 * 5;
-				could_process += soft_data->machine_count_arr[e_machine_processor_2] * 2 * 5 * 5;
+				could_process += soft_data->machine_count_arr[e_machine_processor_3] * 2 * 5 * 5;
 				int will_process = min(could_process, soft_data->raw_currency);
 				add_raw_currency(-will_process);
 				add_currency(will_process);
@@ -878,6 +879,8 @@ func void render(float interp_dt, float delta)
 		game->speed = 0;
 		game->music_speed.target = 1;
 
+		draw_menu_background(ortho, view_inv);
+
 		if(do_button(S("Play"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
 			add_state_transition(&game->state0, e_game_state0_play, game->render_time, c_transition_time);
 			game->do_hard_reset = true;
@@ -915,6 +918,8 @@ func void render(float interp_dt, float delta)
 	if(should_do_pause_menu) {
 		game->speed = 0;
 		game->music_speed.target = 1;
+
+		draw_menu_background(ortho, view_inv);
 
 		if(do_button(S("Resume"), wxy(0.5f, 0.5f), true) == e_button_result_left_click || is_key_pressed(SDLK_RETURN, true)) {
 			pop_state_transition(&game->state0, game->render_time, c_transition_time);
@@ -1117,14 +1122,7 @@ func void render(float interp_dt, float delta)
 
 		b8 do_game_ui = true;
 
-		{
-			s_instance_data data = zero;
-			data.model = m4_translate(v3(c_world_center, 0));
-			data.model = m4_multiply(data.model, m4_scale(v3(c_world_size, 1)));
-			data.color = make_rrr(1);
-			add_to_render_group(data, e_shader_ground, e_texture_white, e_mesh_quad, 0);
-			do_basic_render_flush(ortho, 0, view_inv);
-		}
+		draw_ground(ortho, view_inv);
 
 		if(soft_data->press_input.q && soft_data->machine_to_place.valid) {
 			soft_data->machine_to_place = zero;
@@ -3450,4 +3448,27 @@ func void draw_game_name()
 	data.uv_min = v2(topleft.x / game->superku.texture_size.x, topleft.y / game->superku.texture_size.y);
 	data.uv_max = v2(bottomright.x / game->superku.texture_size.x, bottomright.y / game->superku.texture_size.y);
 	add_to_render_group(data, e_shader_flat, e_texture_superku, e_mesh_quad, 0);
+}
+
+func void draw_menu_background(s_m4 ortho, s_m4 view_inv)
+{
+	draw_ground(ortho, view_inv);
+
+	e_machine machine = e_machine_collector_1;
+	int frame_index = roundfi(game->render_time * 8) % g_machine_data[machine].frame_count;
+	s_v2i atlas_index = g_machine_data[machine].frame_arr[frame_index];
+	s_v2 size = v2(400);
+	draw_atlas(game->superku, wxy(0.1f, 0.15f), size, atlas_index, make_rrr(1), 0);
+	draw_atlas(game->superku, wxy(0.9f, 0.15f), size, atlas_index, make_rrr(1), 0);
+	do_basic_render_flush(ortho, 0, view_inv);
+}
+
+func void draw_ground(s_m4 ortho, s_m4 view_inv)
+{
+	s_instance_data data = zero;
+	data.model = m4_translate(v3(c_world_center, 0));
+	data.model = m4_multiply(data.model, m4_scale(v3(c_world_size, 1)));
+	data.color = make_rrr(1);
+	add_to_render_group(data, e_shader_ground, e_texture_white, e_mesh_quad, 0);
+	do_basic_render_flush(ortho, 0, view_inv);
 }
