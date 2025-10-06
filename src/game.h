@@ -615,6 +615,7 @@ struct s_soft_game_data
 	float start_screen_shake_timestamp;
 	float start_restart_timestamp;
 	s_list<s_particle, 65536> particle_arr;
+	float wanted_zoom;
 	float zoom;
 
 	s_entity_manager<s_entity, c_max_entities> entity_arr;

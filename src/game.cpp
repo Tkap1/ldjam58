@@ -117,6 +117,7 @@ m_dll_export void init(s_platform_data* platform_data)
 	game->speed = 0;
 	game->music_speed = {1, 1};
 	game->soft_data.zoom = 1;
+	game->soft_data.wanted_zoom = 1;
 
 	if(!c_on_web) {
 		game->disable_music = true;
@@ -556,12 +557,11 @@ func void input()
 			case SDL_MOUSEWHEEL: {
 				float x = range_lerp((float)event.wheel.y, -1, 1, 0.9f, 1.1f);
 				if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
-					soft_data->zoom *= x;
-					soft_data->zoom = clamp(soft_data->zoom, 0.125f, 4.0f);
+					soft_data->wanted_zoom *= x;
+					soft_data->wanted_zoom = clamp(soft_data->wanted_zoom, 0.125f, 4.0f);
 					set_maybe_if_invalid(&game->tutorial.zoomed, game->render_time);
 				}
 			} break;
-
 		}
 	}
 }
@@ -589,6 +589,7 @@ func void update()
 			entity_manager_reset(entity_arr, type_i);
 		}
 		soft_data->zoom = 1;
+		soft_data->wanted_zoom = 1;
 
 		soft_data->currency = 60;
 
@@ -843,6 +844,8 @@ func void render(float interp_dt, float delta)
 	auto entity_arr = &soft_data->entity_arr;
 	s_entity player = entity_arr->data[c_first_index[e_entity_player]];
 	s_v2 player_pos = lerp_v2(player.prev_pos, player.pos, interp_dt);
+
+	soft_data->zoom = lerp_snap(soft_data->zoom, soft_data->wanted_zoom, delta * 10, 0.001f);
 
 	s_m4 ortho = make_orthographic(0, c_world_size.x, c_world_size.y, 0, -100, 100);
 	s_m4 view;
