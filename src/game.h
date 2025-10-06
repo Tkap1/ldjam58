@@ -644,13 +644,13 @@ struct s_hard_game_data
 	int update_count;
 };
 
-struct s_light
-{
-	s_v2 pos;
-	float radius;
-	float smoothness;
-	s_v4 color;
-};
+// struct s_light
+// {
+// 	s_v2 pos;
+// 	float radius;
+// 	float smoothness;
+// 	s_v4 color;
+// };
 
 struct s_render_pass
 {
@@ -727,8 +727,8 @@ struct s_game
 
 	s_fbo light_fbo;
 
-	s_list<s_light, 256> multiplicative_light_arr;
-	s_list<s_light, 256> additive_light_arr;
+	// s_list<s_light, 256> multiplicative_light_arr;
+	// s_list<s_light, 256> additive_light_arr;
 
 	b8 disable_music;
 	b8 hide_timer;

@@ -1006,10 +1006,10 @@ func void render(float interp_dt, float delta)
 
 		do_basic_options(&container, button_size);
 
-		// {
-		// 	s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
-		// 	do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
-		// }
+		{
+			s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
+		}
 
 		b8 escape = is_key_pressed(SDLK_ESCAPE, true);
 		if(do_button(S("Back"), wxy(0.87f, 0.92f), true) == e_button_result_left_click || escape) {
@@ -1210,6 +1210,15 @@ func void render(float interp_dt, float delta)
 											frame_index = roundfi(soft_data->researcher_animation_time) % g_machine_data[machine].frame_count;
 										}
 										s_v2i atlas_index = g_machine_data[machine].frame_arr[frame_index];
+										if(machine == e_machine_collector_1) {
+											draw_light(tile_center, 128, make_rgb(0.2f, 0.1f, 0.1f), 0.1f, 3);
+										}
+										else if(machine == e_machine_collector_2) {
+											draw_light(tile_center, 128, make_rgb(0.1f, 0.2f, 0.1f), 0.1f, 3);
+										}
+										else if(machine == e_machine_collector_3) {
+											draw_light(tile_center, 128, make_rgb(0.1f, 0.1f, 0.2f), 0.1f, 3);
+										}
 										draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, color, 1);
 										int dist = get_tile_distance_from_player_to_machine(player.pos, tile_index, machine);
 										b8 in_range = dist <= get_player_tile_reach();
@@ -1376,10 +1385,35 @@ func void render(float interp_dt, float delta)
 			}
 			temp_player->rotation = lerp_angle(temp_player->rotation, wanted_rotation + c_pi * 0.5f, delta * 10);
 			draw_atlas_ex(game->superku, player_pos, c_player_size_v * 2, v2i(temp_player->animation_index, 7), make_rrr(1), temp_player->rotation, zero, 0);
+
+			draw_light(player_pos, 512, make_rrr(1), 0.1f, 3);
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 		do_basic_render_flush(view_projection, 0, view_inv);
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		lights start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		if(!game->disable_lights) {
+			{
+				clear_framebuffer_color(game->light_fbo.id, make_rrr(0.66f));
+				s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
+				data.projection = view_projection;
+				data.blend_mode = e_blend_mode_additive;
+				data.depth_mode = e_depth_mode_no_read_no_write;
+				data.fbo = game->light_fbo;
+				render_flush(data, true, 3);
+			}
+
+			{
+				draw_texture_screen(c_world_center, c_world_size, make_rrr(1), e_texture_light, e_shader_flat, v2(0, 1), v2(1, 0), zero, 0);
+				s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
+				data.projection = ortho;
+				data.blend_mode = e_blend_mode_multiply;
+				data.depth_mode = e_depth_mode_no_read_no_write;
+				render_flush(data, true, 0);
+			}
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		lights end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw fct start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
@@ -2571,6 +2605,10 @@ func void draw_circle(s_v2 pos, float radius, s_v4 color, int render_pass_index)
 
 func void draw_light(s_v2 pos, float radius, s_v4 color, float smoothness, int render_pass_index)
 {
+	if(game->disable_lights) {
+		return;
+	}
+
 	s_instance_data data = zero;
 	data.model = m4_translate(v3(pos, 0));
 	data.model = m4_multiply(data.model, m4_scale(v3(radius * 2, radius * 2, 1)));
@@ -2788,29 +2826,29 @@ func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha, int render_pass_
 	draw_text(str, pos, size.x, color, true, &game->font, zero, render_pass_index + 1);
 }
 
-func void add_multiplicative_light(s_v2 pos, float radius, s_v4 color, float smoothness)
-{
-	s_light light = zero;
-	light.pos = pos;
-	light.radius = radius;
-	light.color = color;
-	light.smoothness = smoothness;
-	if(!game->multiplicative_light_arr.is_full()) {
-		game->multiplicative_light_arr.add(light);
-	}
-}
+// func void add_multiplicative_light(s_v2 pos, float radius, s_v4 color, float smoothness)
+// {
+// 	s_light light = zero;
+// 	light.pos = pos;
+// 	light.radius = radius;
+// 	light.color = color;
+// 	light.smoothness = smoothness;
+// 	if(!game->multiplicative_light_arr.is_full()) {
+// 		game->multiplicative_light_arr.add(light);
+// 	}
+// }
 
-func void add_additive_light(s_v2 pos, float radius, s_v4 color, float smoothness)
-{
-	s_light light = zero;
-	light.pos = pos;
-	light.radius = radius;
-	light.color = color;
-	light.smoothness = smoothness;
-	if(!game->additive_light_arr.is_full()) {
-		game->additive_light_arr.add(light);
-	}
-}
+// func void add_additive_light(s_v2 pos, float radius, s_v4 color, float smoothness)
+// {
+// 	s_light light = zero;
+// 	light.pos = pos;
+// 	light.radius = radius;
+// 	light.color = color;
+// 	light.smoothness = smoothness;
+// 	if(!game->additive_light_arr.is_full()) {
+// 		game->additive_light_arr.add(light);
+// 	}
+// }
 
 func s_entity make_entity()
 {
