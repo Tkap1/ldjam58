@@ -97,6 +97,8 @@ func int get_player_tile_reach();
 func void add_non_spammy_message(s_v2 pos, s_len_str text);
 func s_len_str str_from_place_result(e_place_result place_result);
 func s_stats get_stats();
+func b8 are_research_requirements_satisfied(e_research research);
+func void draw_undiscovered_slot(s_v2 pos, s_v2 rect_size, float flash);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

@@ -1255,7 +1255,7 @@ func void render(float interp_dt, float delta)
 								draw_text(text, text_pos, font_size, make_rrr(1), true, &game->font, zero, 2);
 							}
 
-							if(!soft_data->machine_to_place.valid && mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
+							if(!soft_data->open_inventory_timestamp.valid && !soft_data->machine_to_place.valid && mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
 								draw_atlas(game->atlas, chunk_rect.pos + chunk_rect.size * 0.5f, chunk_rect.size, v2i(0, 0), make_rrr(0.2f), 0);
 								if(!soft_data->open_inventory_timestamp.valid && is_key_pressed(c_left_button, true) && can_afford_chunk) {
 									unlock_chunk_v2i(chunk_index);
@@ -1396,7 +1396,7 @@ func void render(float interp_dt, float delta)
 						e_machine_pure_collector_1, e_machine_pure_collector_2, e_machine_pure_collector_3,
 					};
 					draw_text(S("Machines"), wxy(0.1f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
-					draw_text(S("Research"), wxy(0.7f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
+					draw_text(S("Research"), wxy(0.6f, 0.13f), 48 * p, make_rrr(1), false, &game->font, zero, 1);
 					s_v2 base_pos = wxy(0.1f, 0.2f);
 					s_v2 pos = base_pos;
 					for(int i = 0; i < array_count(arr); i += 1) {
@@ -1424,8 +1424,7 @@ func void render(float interp_dt, float delta)
 							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(flash * 0.5f), 1);
 						}
 						else {
-							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(0.33f * flash), 1);
-							draw_atlas_topleft(game->atlas, pos, rect_size, v2i(1, 0), make_rrr(1.0f * flash), 2);
+							draw_undiscovered_slot(pos, rect_size, flash);
 						}
 						pos.x += 80;
 						if((i + 1) % 3 == 0) {
@@ -1436,37 +1435,62 @@ func void render(float interp_dt, float delta)
 				}
 
 				{
-					s_v2 base_pos = wxy(0.7f, 0.2f);
-					s_v2 pos = base_pos;
-					int processed = 0;
+					s_list<e_research, e_research_count> satisfied_arr = zero;
+					s_list<e_research, e_research_count> unsatisfied_arr = zero;
 					for_enum(research_i, e_research) {
 						if(soft_data->research_completed_timestamp_arr[research_i].valid) {
 							continue;
 						}
-						if(g_research_data[research_i].requirement.valid && !soft_data->research_completed_timestamp_arr[g_research_data[research_i].requirement.value].valid) {
-							continue;
+						b8 requirements_satisfied = are_research_requirements_satisfied(research_i);
+						if(requirements_satisfied) {
+							satisfied_arr.add(research_i);
 						}
+						else {
+							unsatisfied_arr.add(research_i);
+						}
+					}
+
+					s_v2 base_pos = wxy(0.6f, 0.2f);
+					int column = 0;
+					int row = 0;
+					foreach_val(research_i, research, satisfied_arr) {
+						s_v2 pos = base_pos + v2(column * 80, row * 80);
 						float flash = 0.7f;
 						b8 hovered = mouse_vs_rect_topleft(g_mouse, pos, rect_size);
 						if(hovered) {
 							flash = 1;
-							game->tooltip = get_research_tooltip(research_i);
+							game->tooltip = get_research_tooltip(research);
 						}
-						if(soft_data->current_research.valid && soft_data->current_research.value == research_i) {
+						if(soft_data->current_research.valid && soft_data->current_research.value == research) {
 							flash = sin_range(0.5f, 1.0f, game->render_time * 15);
 						}
 						s_v4 color = make_rrr(flash);
 						draw_atlas_topleft(game->atlas, pos, rect_size, v2i(6, 0), color, 1);
+
 						if(hovered && is_key_pressed(c_left_button, true)) {
-							soft_data->current_research = maybe(research_i);
+							soft_data->current_research = maybe(research);
 							soft_data->open_inventory_timestamp = zero;
 						}
-						pos.x += 80;
-						if(processed > 0 && (processed + 1) % 3 == 0) {
-							pos.x = base_pos.x;
-							pos.y += 80;
+						column += 1;
+						if(column >= 5) {
+							column = 0;
+							row += 1;
 						}
-						processed += 1;
+					}
+					foreach_val(research_i, research, unsatisfied_arr) {
+						s_v2 pos = base_pos + v2(column * 80, row * 80);
+						float flash = 0.7f;
+						b8 hovered = mouse_vs_rect_topleft(g_mouse, pos, rect_size);
+						if(hovered) {
+							flash = 1;
+							game->tooltip = S("Research to unlock!");
+						}
+						draw_undiscovered_slot(pos, rect_size, flash);
+						column += 1;
+						if(column >= 5) {
+							column = 0;
+							row += 1;
+						}
 					}
 				}
 
@@ -3182,4 +3206,24 @@ func s_stats get_stats()
 		}
 	}
 	return result;
+}
+
+func b8 are_research_requirements_satisfied(e_research research)
+{
+	s_research_data data = g_research_data[research];
+	b8 result = true;
+	for(int i = 0; i < data.requirement_count; i += 1) {
+		e_research requirement = data.requirement_arr[i];
+		if(!game->soft_data.research_completed_timestamp_arr[requirement].valid) {
+			result = false;
+			break;
+		}
+	}
+	return result;
+}
+
+func void draw_undiscovered_slot(s_v2 pos, s_v2 rect_size, float flash)
+{
+	draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(0.33f * flash), 1);
+	draw_atlas_topleft(game->atlas, pos, rect_size, v2i(1, 0), make_rrr(1.0f * flash), 2);
 }

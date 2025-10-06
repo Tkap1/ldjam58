@@ -427,19 +427,22 @@ data_enum(e_research,
 		.value = 20
 	}
 	player_speed_2 {
-		.requirement = maybe(e_research_player_speed_1),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_player_speed_1},
 		.cost = 100,
 		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 60,
 	}
 	player_speed_3 {
-		.requirement = maybe(e_research_player_speed_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_player_speed_2},
 		.cost = 1000,
 		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 100,
 	}
 	player_speed_4 {
-		.requirement = maybe(e_research_player_speed_3),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_player_speed_3},
 		.cost = 3000,
 		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 300,
@@ -451,19 +454,22 @@ data_enum(e_research,
 		.value = 2
 	}
 	player_tile_reach_2 {
-		.requirement = maybe(e_research_player_tile_reach_1),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_player_tile_reach_1},
 		.cost = 100,
 		.target_stat = maybe(e_stat_player_tile_reach),
 		.value = 4,
 	}
 	player_tile_reach_3 {
-		.requirement = maybe(e_research_player_tile_reach_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_player_tile_reach_2},
 		.cost = 1000,
 		.target_stat = maybe(e_stat_player_tile_reach),
 		.value = 10,
 	}
 	player_tile_reach_4 {
-		.requirement = maybe(e_research_player_tile_reach_3),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_player_tile_reach_3},
 		.cost = 2000,
 		.target_stat = maybe(e_stat_player_tile_reach),
 		.value = 50,
@@ -477,7 +483,8 @@ data_enum(e_research,
 		.cost = 1000,
 	}
 	collector_3 {
-		.requirement = maybe(e_research_collector_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_collector_2},
 		.cost = 100000,
 	}
 
@@ -485,7 +492,8 @@ data_enum(e_research,
 		.cost = 1000,
 	}
 	processor_3 {
-		.requirement = maybe(e_research_processor_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_processor_2},
 		.cost = 100000,
 	}
 
@@ -493,16 +501,19 @@ data_enum(e_research,
 		.cost = 2000,
 	}
 	research_3 {
-		.requirement = maybe(e_research_research_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_research_2},
 		.cost = 200000,
 	}
 
 	pure_collector_2 {
-		.requirement = maybe(e_research_pure_collector_1),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_pure_collector_1},
 		.cost = 10000,
 	}
 	pure_collector_3 {
-		.requirement = maybe(e_research_pure_collector_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_pure_collector_2},
 		.cost = 100000,
 	}
 
@@ -512,13 +523,15 @@ data_enum(e_research,
 		.value = 25,
 	}
 	collector_speed_2 {
-		.requirement = maybe(e_research_collector_speed_1),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_collector_speed_1},
 		.cost = 1000,
 		.target_stat = maybe(e_stat_collector_speed),
 		.value = 50,
 	}
 	collector_speed_3 {
-		.requirement = maybe(e_research_collector_speed_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_collector_speed_2},
 		.cost = 20000,
 		.target_stat = maybe(e_stat_collector_speed),
 		.value = 100,
@@ -530,13 +543,15 @@ data_enum(e_research,
 		.value = 25,
 	}
 	processor_speed_2 {
-		.requirement = maybe(e_research_processor_speed_1),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_processor_speed_1},
 		.cost = 1000,
 		.target_stat = maybe(e_stat_processor_speed),
 		.value = 50,
 	}
 	processor_speed_3 {
-		.requirement = maybe(e_research_processor_speed_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_processor_speed_2},
 		.cost = 20000,
 		.target_stat = maybe(e_stat_processor_speed),
 		.value = 100,
@@ -548,26 +563,31 @@ data_enum(e_research,
 		.value = 25,
 	}
 	research_speed_2 {
-		.requirement = maybe(e_research_research_speed_1),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_research_speed_1},
 		.cost = 1000,
 		.target_stat = maybe(e_stat_research_speed),
 		.value = 50,
 	}
 	research_speed_3 {
-		.requirement = maybe(e_research_research_speed_2),
+		.requirement_count = 1,
+		.requirement_arr = {e_research_research_speed_2},
 		.cost = 20000,
 		.target_stat = maybe(e_stat_research_speed),
 		.value = 100,
 	}
 
 	win {
+		.requirement_count = 2,
+		.requirement_arr = {e_research_collector_3, e_research_processor_3},
 		.cost = 2000000,
 	}
 )
 
 struct s_research_data
 {
-	s_maybe<e_research> requirement;
+	int requirement_count;
+	e_research requirement_arr[4];
 	int cost;
 	s_maybe<e_stat> target_stat;
 	float value;
