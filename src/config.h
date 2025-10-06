@@ -48,7 +48,7 @@ global constexpr int c_leaderboard_visible_entries_per_page = 10;
 
 global constexpr float c_pre_victory_duration = 2.0f;
 
-global constexpr int c_leaderboard_id = 31676;
+global constexpr int c_leaderboard_id = 31932;
 
 global constexpr s_len_str c_game_name = S("Collectorio");
 

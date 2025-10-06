@@ -1,6 +1,14 @@
 
 #if defined(__EMSCRIPTEN__)
-// #include "generated/generated_leaderboard.cpp"
+#include "gen_meta/leaderboard.cpp.funcs"
+
+func void on_leaderboard_id_load_success(void* arg, void* in_data, int data_len);
+func void on_leaderboard_id_load_error(void* arg);
+func void register_leaderboard_client_success(emscripten_fetch_t *fetch);
+func void failure(emscripten_fetch_t *fetch);
+func void get_our_leaderboard_success(emscripten_fetch_t *fetch);
+func void when_leaderboard_score_submitted();
+func void on_set_leaderboard_name(b8 success);
 #endif
 
 func void parse_leaderboard_json(s_json* json)

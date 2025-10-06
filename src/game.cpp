@@ -291,7 +291,7 @@ m_dll_export void init(s_platform_data* platform_data)
 	#endif
 
 	#if defined(__EMSCRIPTEN__) || defined(m_winhttp)
-	// load_or_create_leaderboard_id();
+	load_or_create_leaderboard_id();
 	#endif
 
 	play_sound(e_sound_music, {.loop = true, .speed = game->music_speed.curr});
@@ -991,16 +991,6 @@ func void render(float interp_dt, float delta)
 		{
 			s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
 			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
-		}
-
-		{
-			s_len_str text = format_text("Damage numbers: %s", game->disable_damage_numbers ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_damage_numbers);
-		}
-
-		{
-			s_len_str text = format_text("Gold numbers: %s", game->disable_gold_numbers ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_gold_numbers);
 		}
 
 		b8 escape = is_key_pressed(SDLK_ESCAPE, true);

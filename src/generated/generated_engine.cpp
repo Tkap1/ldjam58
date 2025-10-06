@@ -1,4 +1,4 @@
-func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos);
+func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos, s_m4 view_inv);
 func s_mesh make_mesh_from_vertices(s_vertex* vertex_arr, int vertex_count);
 func s_ply_mesh parse_ply_mesh(char* path, s_linear_arena* arena);
 func s_mesh make_mesh_from_ply_file(char* file, s_linear_arena* arena);
@@ -10,7 +10,7 @@ func void set_window_size(int width, int height);
 func s_texture load_texture_from_file(char* path, u32 filtering);
 func s_texture load_texture_from_data(void* data, int width, int height, int format, u32 filtering);
 func s_font load_font_from_file(char* file, int font_size, s_linear_arena* arena);
-func s_v2 draw_text(s_len_str text, s_v2 in_pos, float font_size, s_v4 color, b8 centered, s_font* font, s_draw_data draw_data);
+func s_v2 draw_text(s_len_str text, s_v2 in_pos, float font_size, s_v4 color, b8 centered, s_font* font, s_draw_data draw_data, int render_pass_index);
 func s_v2 get_text_size_with_count(s_len_str in_text, s_font* font, float font_size, int count, int in_column);
 func s_v2 get_text_size(s_len_str text, s_font* font, float font_size);
 func b8 iterate_text(s_text_iterator* it, s_len_str text, s_v4 color);
@@ -27,7 +27,7 @@ func char* skip_whitespace(char* str);
 func s_v2 wxy(float x, float y);
 func s_v2 wxy(float x);
 func s_v2 wcxy(float x, float y);
-func void update_particles(float delta, b8 do_draw);
+func void update_particles(float delta, b8 do_draw, int render_pass_index);
 template <typename t, int n>
 func int entity_manager_add(s_entity_manager<t, n>* manager, e_entity type, t new_entity);
 template <typename t, int n>
@@ -49,3 +49,5 @@ func float get_rand_sound_speed(float x, s_rng* rng);
 func s_audio_fade make_simple_fade(float p0, float p1);
 func char scancode_to_char(SDL_Scancode scancode);
 func b8 cheat_key(int key);
+func void pre_render(float delta);
+func void do_basic_options(s_container* container, s_v2 button_size);

@@ -79,3 +79,7 @@ too expensive t3 machines
 
 show research %
 research needs icons badly
+tutorial
+music
+options
+icon for pure and raw

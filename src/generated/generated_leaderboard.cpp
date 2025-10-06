@@ -1,3 +1,10 @@
+func void on_leaderboard_id_load_success(void* arg, void* in_data, int data_len);
+func void on_leaderboard_id_load_error(void* arg);
+func void register_leaderboard_client_success(emscripten_fetch_t *fetch);
+func void failure(emscripten_fetch_t *fetch);
+func void get_our_leaderboard_success(emscripten_fetch_t *fetch);
+func void when_leaderboard_score_submitted();
+func void on_set_leaderboard_name(b8 success);
 func void parse_leaderboard_json(s_json* json);
 func void load_or_create_leaderboard_id();
 func void on_store_success(void* arg);
