@@ -754,7 +754,7 @@ func void update()
 				}
 				soft_data->spent_on_research_arr[soft_data->current_research.value] += will_process;
 				if(will_process >= research_left) {
-					soft_data->research_completed_arr[soft_data->current_research.value] = true;
+					soft_data->research_completed_timestamp_arr[soft_data->current_research.value] = maybe(game->update_time);
 					if(soft_data->current_research.value == e_research_win) {
 						play_sound(e_sound_win, zero);
 					}
@@ -1433,10 +1433,10 @@ func void render(float interp_dt, float delta)
 					s_v2 pos = base_pos;
 					int processed = 0;
 					for_enum(research_i, e_research) {
-						if(soft_data->research_completed_arr[research_i]) {
+						if(soft_data->research_completed_timestamp_arr[research_i].valid) {
 							continue;
 						}
-						if(g_research_data[research_i].requirement.valid && !soft_data->research_completed_arr[g_research_data[research_i].requirement.value]) {
+						if(g_research_data[research_i].requirement.valid && !soft_data->research_completed_timestamp_arr[g_research_data[research_i].requirement.value].valid) {
 							continue;
 						}
 						float flash = 0.7f;
@@ -2855,25 +2855,25 @@ func b8 is_machine_unlocked(e_machine machine)
 	switch(machine) {
 		xcase e_machine_collector_1: { result = true; }
 		xcase e_machine_collector_2: {
-			if(soft_data->research_completed_arr[e_research_collector_2]) {
+			if(soft_data->research_completed_timestamp_arr[e_research_collector_2].valid) {
 				result = true;
 			}
 		}
 		xcase e_machine_collector_3: {
-			if(soft_data->research_completed_arr[e_research_collector_3]) {
+			if(soft_data->research_completed_timestamp_arr[e_research_collector_3].valid) {
 				result = true;
 			}
 		}
 		xcase e_machine_processor_1: { result = true; }
 
 		xcase e_machine_processor_2: {
-			if(soft_data->research_completed_arr[e_research_processor_2]) {
+			if(soft_data->research_completed_timestamp_arr[e_research_processor_2].valid) {
 				result = true;
 			}
 		}
 
 		xcase e_machine_processor_3: {
-			if(soft_data->research_completed_arr[e_research_processor_3]) {
+			if(soft_data->research_completed_timestamp_arr[e_research_processor_3].valid) {
 				result = true;
 			}
 		}
@@ -2881,12 +2881,12 @@ func b8 is_machine_unlocked(e_machine machine)
 		xcase e_machine_research_1: { result = true; }
 
 		xcase e_machine_research_2: {
-			if(soft_data->research_completed_arr[e_research_research_2]) {
+			if(soft_data->research_completed_timestamp_arr[e_research_research_2].valid) {
 				result = true;
 			}
 		}
 		xcase e_machine_research_3: {
-			if(soft_data->research_completed_arr[e_research_research_3]) {
+			if(soft_data->research_completed_timestamp_arr[e_research_research_3].valid) {
 				result = true;
 			}
 		}
@@ -3114,7 +3114,7 @@ func s_stats get_stats()
 	s_stats result = zero;
 	for_enum(research_i, e_research) {
 		s_research_data data = g_research_data[research_i];
-		if(data.target_stat.valid && game->soft_data.research_completed_arr[research_i]) {
+		if(data.target_stat.valid && game->soft_data.research_completed_timestamp_arr[research_i].valid) {
 			result.arr[data.target_stat.value] += data.value;
 		}
 	}

@@ -504,7 +504,7 @@ struct s_soft_game_data
 	s_maybe<e_machine> machine_to_place;
 	int machine_count_arr[e_machine_count];
 	s_maybe<e_research> current_research;
-	b8 research_completed_arr[e_research_count];
+	s_maybe<float> research_completed_timestamp_arr[e_research_count];
 	int spent_on_research_arr[e_research_count];
 	s_v2i shift_start;
 };
