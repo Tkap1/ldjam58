@@ -553,7 +553,7 @@ func void input()
 				float x = range_lerp((float)event.wheel.y, -1, 1, 0.9f, 1.1f);
 				if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
 					soft_data->zoom *= x;
-					soft_data->zoom = clamp(soft_data->zoom, 0.25f, 4.0f);
+					soft_data->zoom = clamp(soft_data->zoom, 0.125f, 4.0f);
 				}
 			} break;
 
@@ -732,8 +732,8 @@ func void update()
 				soft_data->research_timer -= 0.45f;
 
 				int could_process = soft_data->machine_count_arr[e_machine_research_1];
-				could_process += soft_data->machine_count_arr[e_machine_research_2] * 100;
-				could_process += soft_data->machine_count_arr[e_machine_research_3] * 10000;
+				could_process += soft_data->machine_count_arr[e_machine_research_2] * 5;
+				could_process += soft_data->machine_count_arr[e_machine_research_3] * 5 * 5;
 				int will_process = min(could_process, (int)soft_data->currency);
 				if(game->free_research) {
 					will_process = 10000000;
@@ -2795,9 +2795,6 @@ func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v
 		}
 	}
 
-	if(!can_afford(currency, get_machine_cost(machine))) {
-		return e_place_result_currency;
-	}
 	e_place_result result = e_place_result_success;
 
 	int x_offset = tile_index.x - (c_biggest_machine_tile_size - 1);
@@ -2865,6 +2862,9 @@ func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v
 	}
 	else if(collision) {
 		result = e_place_result_occupied;
+	}
+	else if(!can_afford(currency, get_machine_cost(machine))) {
+		return e_place_result_currency;
 	}
 
 	return result;

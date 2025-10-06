@@ -71,6 +71,8 @@ fancy text on win research?
 
 animate gaining resource
 
-show research that we can't get with question mark
-
 juice it up so it at least feels good even though the gameplay loop is trash
+
+cancel research by clicking on it again
+too expensive t3 research
+too expensive t3 machines

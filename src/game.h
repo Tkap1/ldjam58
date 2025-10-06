@@ -282,7 +282,7 @@ data_enum(e_machine,
 		.name = S("Collector Mk2"),
 		.requires_resource = true,
 		.size = 2,
-		.cost = 1000,
+		.cost = 500,
 		.frame_count = 4,
 		.frame_arr = {
 			{0, 1}, {1, 1}, {2, 1}, {3, 1},
@@ -313,7 +313,7 @@ data_enum(e_machine,
 	processor_2 {
 		.name = S("Processor Mk2"),
 		.size = 3,
-		.cost = 2000,
+		.cost = 1000,
 		.frame_count = 1,
 		.frame_arr = {
 			{5, 1},
@@ -343,7 +343,7 @@ data_enum(e_machine,
 	research_2 {
 		.name = S("Researcher Mk2"),
 		.size = 3,
-		.cost = 3000,
+		.cost = 1500,
 		.frame_count = 8,
 		.frame_arr = {
 			{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 4}, {7, 4},
@@ -482,15 +482,17 @@ data_enum(e_research,
 	collector_2 {
 		.cost = 1000,
 	}
+
+	processor_2 {
+		.cost = 1000,
+	}
+
 	collector_3 {
 		.requirement_count = 1,
 		.requirement_arr = {e_research_collector_2},
 		.cost = 100000,
 	}
 
-	processor_2 {
-		.cost = 1000,
-	}
 	processor_3 {
 		.requirement_count = 1,
 		.requirement_arr = {e_research_processor_2},
