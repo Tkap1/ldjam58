@@ -282,7 +282,7 @@ data_enum(e_machine,
 		.name = S("Collector Mk2"),
 		.requires_resource = true,
 		.size = 2,
-		.cost = 500,
+		.cost = 10 * 10,
 		.frame_count = 4,
 		.frame_arr = {
 			{0, 1}, {1, 1}, {2, 1}, {3, 1},
@@ -293,7 +293,7 @@ data_enum(e_machine,
 		.name = S("Collector Mk3"),
 		.requires_resource = true,
 		.size = 2,
-		.cost = 100000,
+		.cost = 10 * 10 * 10,
 		.frame_count = 4,
 		.frame_arr = {
 			{0, 2}, {1, 2}, {2, 2}, {3, 2},
@@ -313,7 +313,7 @@ data_enum(e_machine,
 	processor_2 {
 		.name = S("Processor Mk2"),
 		.size = 3,
-		.cost = 1000,
+		.cost = 20 * 5,
 		.frame_count = 1,
 		.frame_arr = {
 			{5, 1},
@@ -323,7 +323,7 @@ data_enum(e_machine,
 	processor_3 {
 		.name = S("Processor Mk3"),
 		.size = 3,
-		.cost = 200000,
+		.cost = 20 * 5 * 5,
 		.frame_count = 1,
 		.frame_arr = {
 			{5, 2},
@@ -343,7 +343,7 @@ data_enum(e_machine,
 	research_2 {
 		.name = S("Researcher Mk2"),
 		.size = 3,
-		.cost = 1500,
+		.cost = 30 * 5,
 		.frame_count = 8,
 		.frame_arr = {
 			{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 4}, {7, 4},
@@ -353,7 +353,7 @@ data_enum(e_machine,
 	research_3 {
 		.name = S("Researcher Mk3"),
 		.size = 3,
-		.cost = 3000,
+		.cost = 30 * 5 * 5,
 		.frame_count = 8,
 		.frame_arr = {
 			{0, 5}, {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 5}, {6, 5}, {7, 5},
@@ -373,7 +373,7 @@ data_enum(e_machine,
 	pure_collector_2 {
 		.name = S("Pure collector Mk2"),
 		.size = 1,
-		.cost = 2000,
+		.cost = 20 * 5,
 		.frame_count = 1,
 		.frame_arr = {
 			{7, 1},
@@ -383,7 +383,7 @@ data_enum(e_machine,
 	pure_collector_3 {
 		.name = S("Pure collector Mk3"),
 		.size = 1,
-		.cost = 200000,
+		.cost = 20 * 5 * 5,
 		.frame_count = 1,
 		.frame_arr = {
 			{7, 2},
@@ -429,7 +429,7 @@ data_enum(e_research,
 	player_speed_2 {
 		.requirement_count = 1,
 		.requirement_arr = {e_research_player_speed_1},
-		.cost = 100,
+		.cost = 200,
 		.target_stat = maybe(e_stat_player_movement_speed),
 		.value = 60,
 	}
@@ -456,7 +456,7 @@ data_enum(e_research,
 	player_tile_reach_2 {
 		.requirement_count = 1,
 		.requirement_arr = {e_research_player_tile_reach_1},
-		.cost = 100,
+		.cost = 200,
 		.target_stat = maybe(e_stat_player_tile_reach),
 		.value = 4,
 	}

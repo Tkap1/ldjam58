@@ -78,3 +78,4 @@ too expensive t3 research
 too expensive t3 machines
 
 show research %
+research needs icons badly

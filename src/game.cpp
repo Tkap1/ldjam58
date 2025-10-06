@@ -1264,7 +1264,7 @@ func void render(float interp_dt, float delta)
 								draw_text(text, text_pos, font_size, make_rrr(1), true, &game->font, zero, 2);
 							}
 
-							if(!soft_data->open_inventory_timestamp.valid && !soft_data->machine_to_place.valid && mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
+							if(!soft_data->open_inventory_timestamp.valid && mouse_vs_rect_topleft(world_mouse, chunk_rect.pos, chunk_rect.size)) {
 								draw_atlas(game->atlas, chunk_rect.pos + chunk_rect.size * 0.5f, chunk_rect.size, v2i(0, 0), make_rrr(0.2f), 0);
 								if(!soft_data->open_inventory_timestamp.valid && is_key_pressed(c_left_button, true) && can_afford_chunk) {
 									unlock_chunk_v2i(chunk_index);
@@ -1296,6 +1296,10 @@ func void render(float interp_dt, float delta)
 					swap(&topleft.y, &bottomright.y);
 					topleft.y += m;
 				}
+				topleft.x = clamp(topleft.x, 0, c_max_tiles - 1);
+				topleft.y = clamp(topleft.y, 0, c_max_tiles - 1);
+				bottomright.x = clamp(bottomright.x, 0, c_max_tiles - 1);
+				bottomright.y = clamp(bottomright.y, 0, c_max_tiles - 1);
 				{
 					s_v2i curr_index = topleft;
 					b8 placed_something = false;
