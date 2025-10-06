@@ -58,3 +58,22 @@ balance prices
 
 icon for pure and raw
 mention ctrl + r
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+Collect energy through machinery
+
+Research new technologies
+
+Become THE COLLECTOR
+
+Reach the TOP of the leaderboard
+
+# Development
+Made in C++ without an engine in about 20~ hours
+
+Everything, including programmer art, done by Tkap
+
+Good art by Superku
+
+Music by TeknoAXE

@@ -95,3 +95,6 @@ func s_len_str str_from_place_result(e_place_result place_result);
 func s_stats get_stats();
 func b8 are_research_requirements_satisfied(e_research research);
 func void draw_undiscovered_slot(s_v2 pos, s_v2 rect_size, float flash);
+func void draw_game_name();
+func void draw_menu_background(s_m4 ortho, s_m4 view_inv);
+func void draw_ground(s_m4 ortho, s_m4 view_inv);

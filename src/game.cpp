@@ -952,6 +952,7 @@ func void render(float interp_dt, float delta)
 	if(should_do_leaderboard_menu) {
 		game->speed = 0;
 		game->music_speed.target = 1;
+		draw_ground(ortho, view_inv);
 		do_leaderboard();
 	}
 
@@ -994,6 +995,8 @@ func void render(float interp_dt, float delta)
 	if(should_do_options_menu) {
 		game->speed = 0;
 		game->music_speed.target = 1;
+
+		draw_ground(ortho, view_inv);
 
 		s_v2 button_size = v2(600, 48);
 		s_container container = make_down_center_x_container(make_rect(wxy(0.0f, 0.05f), c_world_size), button_size, 32);
@@ -1044,6 +1047,8 @@ func void render(float interp_dt, float delta)
 		s_input_name_state* state = &game->input_name_state;
 		float font_size = 36;
 		s_v2 pos = c_world_size * v2(0.5f, 0.4f);
+
+		draw_ground(ortho, view_inv);
 
 		int count_before = state->name.str.count;
 		b8 submitted = handle_string_input(&state->name, game->render_time);
