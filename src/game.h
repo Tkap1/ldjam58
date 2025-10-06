@@ -564,6 +564,8 @@ struct s_soft_game_data
 	s_maybe<float> research_completed_timestamp_arr[e_research_count];
 	int spent_on_research_arr[e_research_count];
 	s_v2i shift_start;
+	float machine_animation_time;
+	float researcher_animation_time;
 };
 
 struct s_hard_game_data

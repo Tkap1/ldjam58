@@ -1159,8 +1159,10 @@ func void render(float interp_dt, float delta)
 		{
 			s_rect camera_bounds = get_camera_bounds(view_inv);
 
-			static float foo = 0;
-			foo += delta * 8;
+			soft_data->machine_animation_time += delta * 8;
+			if(soft_data->current_research.valid) {
+				soft_data->researcher_animation_time += delta * 8;
+			}
 
 			for(int chunk_y = topleft_index.y; chunk_y <= bottomright_index.y; chunk_y += 1) {
 				for(int chunk_x = topleft_index.x; chunk_x <= bottomright_index.x; chunk_x += 1) {
@@ -1200,7 +1202,10 @@ func void render(float interp_dt, float delta)
 												soft_data->machine_to_place = maybe(machine);
 											}
 										}
-										int frame_index = roundfi(foo) % g_machine_data[machine].frame_count;
+										int frame_index = roundfi(soft_data->machine_animation_time) % g_machine_data[machine].frame_count;
+										if(machine == e_machine_research_1 || machine == e_machine_research_2 || machine == e_machine_research_3) {
+											frame_index = roundfi(soft_data->researcher_animation_time) % g_machine_data[machine].frame_count;
+										}
 										s_v2i atlas_index = g_machine_data[machine].frame_arr[frame_index];
 										draw_atlas(game->superku, tile_center, size * 1.5f, atlas_index, color, 1);
 										int dist = get_tile_distance_from_player_to_machine(player.pos, tile_index, machine);
