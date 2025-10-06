@@ -816,8 +816,9 @@ func void update()
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 	}
 
-	if(0) {
-		// soft_data->boss_defeated_timestamp = 0;
+	s_maybe<float>* temp = &soft_data->research_completed_timestamp_arr[e_research_win];
+	if(temp->valid && game->update_time - temp->value >= 3.0f) {
+		*temp = zero;
 		if(game->leaderboard_nice_name.count <= 0 && c_on_web) {
 			add_temporary_state_transition(&game->state0, e_game_state0_input_name, game->render_time, c_transition_time);
 		}
