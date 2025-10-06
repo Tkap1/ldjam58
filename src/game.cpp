@@ -894,7 +894,8 @@ func void render(float interp_dt, float delta)
 			add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
 		}
 
-		draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
+		draw_game_name();
+		// draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
 		draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
 
 		if(c_on_web) {
@@ -930,7 +931,8 @@ func void render(float interp_dt, float delta)
 			add_state_transition(&game->state0, e_game_state0_options, game->render_time, c_transition_time);
 		}
 
-		draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
+		draw_game_name();
+		// draw_text(c_game_name, wxy(0.5f, 0.2f), 128, make_rrr(1), true, &game->font, zero, 0);
 		draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
 
 		{
@@ -3433,4 +3435,19 @@ func void draw_undiscovered_slot(s_v2 pos, s_v2 rect_size, float flash)
 {
 	draw_atlas_topleft(game->atlas, pos, rect_size, v2i(0, 0), make_rrr(0.33f * flash), 1);
 	draw_atlas_topleft(game->atlas, pos, rect_size, v2i(1, 0), make_rrr(1.0f * flash), 2);
+}
+
+func void draw_game_name()
+{
+	s_v2 topleft = v2(84, 3108);
+	s_v2 bottomright = v2(1464, 3423);
+	s_v2 size = bottomright - topleft;
+	s_v2 aspect_ratio = v2(1, size.y / size.x);
+	s_instance_data data = zero;
+	data.model = m4_translate(v3(wxy(0.5f, 0.2f), 0.0f));
+	data.model = m4_multiply(data.model, m4_scale(v3(v2(512) * aspect_ratio, 1)));
+	data.color = make_rrr(1);
+	data.uv_min = v2(topleft.x / game->superku.texture_size.x, topleft.y / game->superku.texture_size.y);
+	data.uv_max = v2(bottomright.x / game->superku.texture_size.x, bottomright.y / game->superku.texture_size.y);
+	add_to_render_group(data, e_shader_flat, e_texture_superku, e_mesh_quad, 0);
 }

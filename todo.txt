@@ -52,7 +52,9 @@ polish:
 	juice it up so it at least feels good even though the gameplay loop is trash
 	show research %
 	research needs icons badly
+	smooth zoom
 
 balance prices
 
 icon for pure and raw
+mention ctrl + r
