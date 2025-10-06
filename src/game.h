@@ -511,12 +511,12 @@ data_enum(e_research,
 	pure_collector_2 {
 		.requirement_count = 1,
 		.requirement_arr = {e_research_pure_collector_1},
-		.cost = 10000,
+		.cost = 1000,
 	}
 	pure_collector_3 {
 		.requirement_count = 1,
 		.requirement_arr = {e_research_pure_collector_2},
-		.cost = 100000,
+		.cost = 10000,
 	}
 
 	collector_speed_1 {
@@ -602,6 +602,8 @@ struct s_soft_game_data
 	float processor_timer;
 	float research_timer;
 
+	float last_step_sound_timestamp;
+
 	float last_non_spammy_timestamp;
 
 	s_maybe<float> open_inventory_timestamp;
@@ -680,6 +682,7 @@ struct s_tutorial
 struct s_game
 {
 	s_tutorial tutorial;
+	b8 disable_walk_sound;
 	b8 fast_player_speed;
 	b8 player_super_reach;
 	b8 free_research;

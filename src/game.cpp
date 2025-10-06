@@ -784,6 +784,15 @@ func void update()
 				set_maybe_if_invalid(&game->tutorial.moved, game->render_time);
 				player->last_dir = movement;
 				player->walking = true;
+
+				float passed = game->render_time - soft_data->last_step_sound_timestamp;
+				float p = get_player_speed() / c_base_player_speed;
+				if(passed >= 0.25f / p) {
+					soft_data->last_step_sound_timestamp = game->render_time;
+					if(!game->disable_walk_sound) {
+						play_sound(e_sound_step, {.speed = get_rand_sound_speed(1.2f, &game->rng)});
+					}
+				}
 			}
 			movement = v2_normalized(movement) * get_player_speed() * delta;
 
@@ -861,7 +870,7 @@ func void render(float interp_dt, float delta)
 
 	s_v2 world_mouse = v2_multiply_m4(g_mouse, view_inv);
 
-	clear_framebuffer_color(0, v4(0.1f, 0.1f, 0.1f, 0.1f));
+	clear_framebuffer_color(0, make_rrr(0.0f));
 
 	e_game_state0 state0 = (e_game_state0)get_state(&game->state0);
 
@@ -1011,6 +1020,11 @@ func void render(float interp_dt, float delta)
 			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
 		}
 
+		{
+			s_len_str text = format_text("Walk sound: %s", game->disable_walk_sound ? "Off" : "On");
+			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_walk_sound);
+		}
+
 		b8 escape = is_key_pressed(SDLK_ESCAPE, true);
 		if(do_button(S("Back"), wxy(0.87f, 0.92f), true) == e_button_result_left_click || escape) {
 			pop_state_transition(&game->state0, game->render_time, c_transition_time);
@@ -1128,7 +1142,7 @@ func void render(float interp_dt, float delta)
 
 	if(do_game) {
 
-		b8 do_game_ui = true;
+		b8 do_game_ui = false;
 
 		draw_ground(ortho, view_inv);
 
@@ -1548,7 +1562,7 @@ func void render(float interp_dt, float delta)
 					s_v2 pos = wxy(0.1f, 0.9f);
 					float alpha = 1.0f - powf(time_passed, 2.0f);
 					draw_keycap(scancode_to_char(SDL_SCANCODE_Q), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4 + 0)), v2(font_size), alpha, 0);
-					draw_text(S("on a machine to being placing that type of machine"), pos + v2(advance * 1, 0), font_size, make_ra(1, alpha), false, &game->font, zero, 0);
+					draw_text(S("on a machine to begin placing that type of machine"), pos + v2(advance * 1, 0), font_size, make_ra(1, alpha), false, &game->font, zero, 0);
 					break;
 				}
 				// ------------------------------------------------------------------------
@@ -1572,7 +1586,7 @@ func void render(float interp_dt, float delta)
 				if(time_passed <= 1.0f) {
 					s_v2 pos = wxy(0.5f, 0.9f);
 					float alpha = 1.0f - powf(time_passed, 2.0f);
-					draw_text(S("Click on an unrevealed area to reveal it\n        (It costs pure energy)"), pos + v2(advance * 1, 0), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					draw_text(S("Click on an unrevealed area to reveal it\n        (It costs pure energy)"), pos + v2(advance * 1, sin_range(-10, 10, game->render_time * 4 + 0)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
 					break;
 				}
 				// ------------------------------------------------------------------------
@@ -2977,7 +2991,9 @@ func void unlock_chunk_v2i(s_v2i index)
 	assert(index.y < c_chunk_count);
 	assert(!is_chunk_unlocked_v2i(index));
 	game->soft_data.purchased_chunk_arr[index.y][index.x] = true;
-	set_maybe_if_invalid(&game->tutorial.unlocked_chunk, game->render_time);
+	if(index != v2i(c_starting_chunk, c_starting_chunk)) {
+		set_maybe_if_invalid(&game->tutorial.unlocked_chunk, game->render_time);
+	}
 }
 
 func int get_chunk_unlock_cost(s_v2i index)

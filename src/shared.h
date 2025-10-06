@@ -38,6 +38,7 @@ enum e_sound
 	e_sound_lightning_bolt,
 	e_sound_upgrade,
 	e_sound_music,
+	e_sound_step,
 	e_sound_count,
 };
 
@@ -62,6 +63,7 @@ global constexpr s_sound_data c_sound_data_arr[e_sound_count] = {
 	{"assets/lightning_bolt.wav", 0.05f},
 	{"assets/upgrade.wav", 0.2f},
 	{"assets/music.wav", 0.1f},
+	{"assets/step.wav", 0.08f},
 };
 
 struct s_active_sound
