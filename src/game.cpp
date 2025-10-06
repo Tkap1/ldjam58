@@ -755,8 +755,13 @@ func void update()
 				soft_data->spent_on_research_arr[soft_data->current_research.value] += will_process;
 				if(will_process >= research_left) {
 					soft_data->research_completed_arr[soft_data->current_research.value] = true;
+					if(soft_data->current_research.value == e_research_win) {
+						play_sound(e_sound_win, zero);
+					}
+					else {
+						play_sound(e_sound_upgrade, zero);
+					}
 					soft_data->current_research = zero;
-					play_sound(e_sound_upgrade, zero);
 				}
 			}
 		}
@@ -2958,6 +2963,11 @@ func s_len_str get_research_tooltip(e_research research)
 		xcase e_research_research_3: {
 			result = format_text("Unlocks Researcher Mk3");
 		}
+
+		xcase e_research_win: {
+			result = format_text("This is it. YOU ARE THE COLLECTOR!");
+		}
+
 		break; invalid_default_case;
 	}
 	result = format_text("%.*s\nCost: %i", expand_str(result), data.cost);

@@ -156,5 +156,8 @@ global constexpr s_research_data g_research_data[e_research_count] = {
 		.requirement = maybe(e_research_research_2),
 		.cost = 200000,
 	},
+	{
+		.cost = 2000000,
+	},
 };
 

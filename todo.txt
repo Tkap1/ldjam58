@@ -70,3 +70,4 @@ only animate researcher if we have active research
 balance prices
 
 could have 3 different types of currencies so that what we built before is not irrelevant?
+fancy text on win research?

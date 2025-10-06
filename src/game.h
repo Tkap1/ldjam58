@@ -456,6 +456,10 @@ data_enum(e_research,
 		.requirement = maybe(e_research_research_2),
 		.cost = 200000,
 	}
+
+	win {
+		.cost = 2000000,
+	}
 )
 
 struct s_research_data
