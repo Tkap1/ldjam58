@@ -44,18 +44,10 @@ could have a machine that collects without the need for resources, but it does s
 
 
 --------------------------------------------------------------------------------------------------------------------------------------------
-leaderboard id
-reenable loeaderboard call inside init
+polish:
+	particles
+	lights
 
-maybe you collect cards? and they give you stuff. so they serve as the progression and the upgrades??
-
-tooltips for machines
-
-power??
-beacon-style thing?
-give a name to currency?
-particles
-lights
 explain controls
 explain goal
 "passive" collectors that collect less but don't need to be placed on resource

@@ -3079,37 +3079,37 @@ func s_len_str get_machine_tooltip(e_machine machine)
 			builder_add(&builder, "Place on rockum to collect raw energy");
 		}
 		xcase e_machine_collector_2: {
-			builder_add(&builder, "Place on warum to collect a lot of raw energy");
+			builder_add(&builder, "Place on warum to collect a lot of raw energy\n(5x faster)");
 		}
 		xcase e_machine_collector_3: {
-			builder_add(&builder, "Place on starum to collect a huge amount raw energy");
+			builder_add(&builder, "Place on starum to collect a huge amount raw energy\n(25x faster)");
 		}
 		xcase e_machine_processor_1: {
 			builder_add(&builder, "Convert raw energy into pure energy");
 		}
 		xcase e_machine_processor_2: {
-			builder_add(&builder, "Convert raw energy into pure energy, but faster");
+			builder_add(&builder, "Convert raw energy into pure energy, but faster\n(5x faster)");
 		}
 		xcase e_machine_processor_3: {
-			builder_add(&builder, "Convert raw energy into pure energy, but even faster");
+			builder_add(&builder, "Convert raw energy into pure energy, but even faster\n(25x faster)");
 		}
 		xcase e_machine_research_1: {
-			builder_add(&builder, "Researches new technology using pure energy");
+			builder_add(&builder, "Research new technology using pure energy");
 		}
 		xcase e_machine_research_2: {
-			builder_add(&builder, "Researches new technology, but faster");
+			builder_add(&builder, "Research new technology, but faster\n(5x faster)");
 		}
 		xcase e_machine_research_3: {
-			builder_add(&builder, "Researches new technology, but even faster");
+			builder_add(&builder, "Research new technology, but even faster\n(25x faster)");
 		}
 		xcase e_machine_pure_collector_1: {
 			builder_add(&builder, "Turn air into pure energy, very slowly");
 		}
 		xcase e_machine_pure_collector_2: {
-			builder_add(&builder, "Turn air into pure energy, not as slow");
+			builder_add(&builder, "Turn air into pure energy, not as slow\n(5x faster)");
 		}
 		xcase e_machine_pure_collector_3: {
-			builder_add(&builder, "Turn air into pure energy");
+			builder_add(&builder, "Turn air into pure energy\n(25x faster)");
 		}
 		break; invalid_default_case;
 	}
