@@ -993,10 +993,10 @@ func void render(float interp_dt, float delta)
 
 		do_basic_options(&container, button_size);
 
-		{
-			s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
-			do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
-		}
+		// {
+		// 	s_len_str text = format_text("Lights: %s", game->disable_lights ? "Off" : "On");
+		// 	do_bool_button_ex(text, container_get_pos_and_advance(&container), button_size, false, &game->disable_lights);
+		// }
 
 		b8 escape = is_key_pressed(SDLK_ESCAPE, true);
 		if(do_button(S("Back"), wxy(0.87f, 0.92f), true) == e_button_result_left_click || escape) {
@@ -1554,6 +1554,79 @@ func void render(float interp_dt, float delta)
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		tutorial end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+		// {
+		// 	s_render_flush_data data = make_render_flush_data(zero, zero);
+		// 	data.projection = ortho;
+		// 	data.blend_mode = e_blend_mode_normal;
+		// 	data.depth_mode = e_depth_mode_no_read_no_write;
+		// 	render_flush(data, true, 0);
+		// }
+
+
+		// update_particles(delta, true, 0);
+
+		// {
+		// 	s_render_flush_data data = make_render_flush_data(zero, zero);
+		// 	data.projection = ortho;
+		// 	data.blend_mode = e_blend_mode_additive;
+		// 	data.depth_mode = e_depth_mode_no_read_no_write;
+		// 	render_flush(data, true, 0);
+		// }
+
+		if(do_game_ui) {
+
+			s_rect rect = {
+				4, 4, 4, 4
+			};
+			s_v2 button_size = v2(1, 44);
+			s_container container = make_down_center_x_container(rect, button_size, 10);
+
+			{
+				s_time_format data = update_count_to_time_format(game->hard_data.update_count);
+				s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
+				if(!game->hide_timer) {
+					draw_text(text, container_get_pos_and_advance(&container), 48, make_rrr(1), false, &game->font, zero, 0);
+				}
+			}
+
+			{
+				s_len_str text = format_text("Pure: %i", soft_data->currency);
+				draw_text(text, container_get_pos_and_advance(&container), 48, make_rrr(1), false, &game->font, zero, 0);
+			}
+
+			{
+				s_len_str text = format_text("Raw: %i", soft_data->raw_currency);
+				draw_text(text, container_get_pos_and_advance(&container), 48, make_rrr(1), false, &game->font, zero, 0);
+			}
+
+			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		research progress bar start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			if(soft_data->current_research.valid) {
+				e_research r = soft_data->current_research.value;
+				s_v2 pos = wxy(0.78f, 0.03f);
+				s_v2 under_size = wxy(0.2f, 0.03f);
+				float research_percentage = soft_data->spent_on_research_arr[r] / (float)g_research_data[r].cost;
+				s_v2 over_size = v2(under_size.x * research_percentage, under_size.y);
+				draw_rect_topleft(pos, under_size, make_rrr(0.5f), 0);
+				draw_rect_topleft(pos, over_size, make_rrr(1), 0);
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		research progress bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+			{
+				s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
+				data.projection = ortho;
+				data.blend_mode = e_blend_mode_normal;
+				data.depth_mode = e_depth_mode_no_read_no_write;
+				render_flush(data, true, 0);
+			}
+
+			// {
+			// 	s_render_flush_data data = make_render_flush_data(zero, zero);
+			// 	data.projection = ortho;
+			// 	data.blend_mode = e_blend_mode_normal;
+			// 	data.depth_mode = e_depth_mode_read_and_write;
+			// 	render_flush(data, true, 0);
+			// }
+		}
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		inventory start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
@@ -1682,55 +1755,17 @@ func void render(float interp_dt, float delta)
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		inventory end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-		// {
-		// 	s_render_flush_data data = make_render_flush_data(zero, zero);
-		// 	data.projection = ortho;
-		// 	data.blend_mode = e_blend_mode_normal;
-		// 	data.depth_mode = e_depth_mode_no_read_no_write;
-		// 	render_flush(data, true, 0);
-		// }
-
-
-		// update_particles(delta, true, 0);
-
-		// {
-		// 	s_render_flush_data data = make_render_flush_data(zero, zero);
-		// 	data.projection = ortho;
-		// 	data.blend_mode = e_blend_mode_additive;
-		// 	data.depth_mode = e_depth_mode_no_read_no_write;
-		// 	render_flush(data, true, 0);
-		// }
-
-		if(do_game_ui) {
-
-			s_rect rect = {
-				c_game_area.x, 176.0f, c_world_size.x - c_game_area.x, c_world_size.y
-			};
-			s_v2 button_size = v2(320, 48);
-			s_container container = make_down_center_x_container(rect, button_size, 10);
-
-			{
-				s_len_str text = format_text("%i", soft_data->currency);
-				draw_text(text, v2(4), 64, make_rrr(1), false, &game->font, zero, 0);
-			}
-
-			{
-				s_len_str text = format_text("%i", soft_data->raw_currency);
-				draw_text(text, v2(4, 68), 64, make_rrr(1), false, &game->font, zero, 0);
-			}
-
-			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		research progress bar start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-			if(soft_data->current_research.valid) {
-				e_research r = soft_data->current_research.value;
-				s_v2 pos = wxy(0.78f, 0.03f);
-				s_v2 under_size = wxy(0.2f, 0.03f);
-				float research_percentage = soft_data->spent_on_research_arr[r] / (float)g_research_data[r].cost;
-				s_v2 over_size = v2(under_size.x * research_percentage, under_size.y);
-				draw_rect_topleft(pos, under_size, make_rrr(0.5f), 0);
-				draw_rect_topleft(pos, over_size, make_rrr(1), 0);
-			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		research progress bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
+		if(game->tooltip.count > 0) {
+			float font_size = 32;
+			s_v2 size = get_text_size(game->tooltip, &game->font, font_size);
+			s_v2 rect_pos = zero;
+			rect_pos -= v2(8);
+			size += v2(16);
+			rect_pos = topleft_to_bottomleft_mouse(rect_pos, size, g_mouse);
+			rect_pos = prevent_offscreen(rect_pos, size);
+			s_v2 text_pos = rect_pos + v2(8);
+			draw_rect_topleft(rect_pos, size, make_ra(0.1f, 0.95f), 0);
+			draw_text(game->tooltip, text_pos, font_size, make_rrr(1), false, &game->font, zero, 0);
 			{
 				s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 				data.projection = ortho;
@@ -1738,36 +1773,8 @@ func void render(float interp_dt, float delta)
 				data.depth_mode = e_depth_mode_no_read_no_write;
 				render_flush(data, true, 0);
 			}
-
-			// {
-			// 	s_render_flush_data data = make_render_flush_data(zero, zero);
-			// 	data.projection = ortho;
-			// 	data.blend_mode = e_blend_mode_normal;
-			// 	data.depth_mode = e_depth_mode_read_and_write;
-			// 	render_flush(data, true, 0);
-			// }
-
-			if(game->tooltip.count > 0) {
-				float font_size = 32;
-				s_v2 size = get_text_size(game->tooltip, &game->font, font_size);
-				s_v2 rect_pos = zero;
-				rect_pos -= v2(8);
-				size += v2(16);
-				rect_pos = topleft_to_bottomleft_mouse(rect_pos, size, g_mouse);
-				rect_pos = prevent_offscreen(rect_pos, size);
-				s_v2 text_pos = rect_pos + v2(8);
-				draw_rect_topleft(rect_pos, size, make_ra(0.1f, 0.95f), 0);
-				draw_text(game->tooltip, text_pos, font_size, make_rrr(1), false, &game->font, zero, 0);
-				{
-					s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
-					data.projection = ortho;
-					data.blend_mode = e_blend_mode_normal;
-					data.depth_mode = e_depth_mode_no_read_no_write;
-					render_flush(data, true, 0);
-				}
-			}
-			game->tooltip = zero;
 		}
+		game->tooltip = zero;
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		cheat menu start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		#if defined(m_debug)

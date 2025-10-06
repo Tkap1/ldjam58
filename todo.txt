@@ -47,30 +47,12 @@ could have a machine that collects without the need for resources, but it does s
 polish:
 	particles
 	lights
+	fancy text on win research?
+	animate gaining resource
+	juice it up so it at least feels good even though the gameplay loop is trash
+	show research %
+	research needs icons badly
 
-explain goal
-"passive" collectors that collect less but don't need to be placed on resource
-
-we could do the equivalent of pipes so that we dont have to deal with complexity of belts?
-	because it's kinda sad that everytihng is connected
-
-only animate researcher if we have active research
 balance prices
 
-could have 3 different types of currencies so that what we built before is not irrelevant?
-fancy text on win research?
-
-animate gaining resource
-
-juice it up so it at least feels good even though the gameplay loop is trash
-
-cancel research by clicking on it again
-too expensive t3 research
-too expensive t3 machines
-
-show research %
-research needs icons badly
-tutorial
-music
-options
 icon for pure and raw
