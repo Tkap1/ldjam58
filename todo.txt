@@ -48,7 +48,6 @@ polish:
 	particles
 	lights
 
-explain controls
 explain goal
 "passive" collectors that collect less but don't need to be placed on resource
 

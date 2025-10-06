@@ -660,8 +660,25 @@ struct s_render_pass
 	s_list<s_render_group, 128> render_group_arr;
 };
 
+struct s_tutorial
+{
+	s_maybe<float> moved;
+	s_maybe<float> zoomed;
+	s_maybe<float> opened_inventory;
+	s_maybe<float> placed_collector;
+	s_maybe<float> placed_processor;
+	s_maybe<float> started_a_research;
+	s_maybe<float> placed_researcher;
+	s_maybe<float> deleted_machine;
+	s_maybe<float> used_q;
+	s_maybe<float> used_shift;
+	s_maybe<float> unlocked_chunk;
+	s_maybe<float> tutorial_end;
+};
+
 struct s_game
 {
+	s_tutorial tutorial;
 	b8 fast_player_speed;
 	b8 player_super_reach;
 	b8 free_research;

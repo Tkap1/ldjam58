@@ -465,6 +465,9 @@ func void input()
 					else if(scancode == SDL_SCANCODE_E && event.key.repeat == 0) {
 						if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
 							toggle_maybe(&soft_data->open_inventory_timestamp, game->render_time);
+							if(soft_data->open_inventory_timestamp.valid) {
+								set_maybe_if_invalid(&game->tutorial.opened_inventory, game->render_time);
+							}
 						}
 					}
 					else if(scancode == SDL_SCANCODE_Q && event.key.repeat == 0) {
@@ -554,6 +557,7 @@ func void input()
 				if(state0 == e_game_state0_play && state1 == e_game_state1_default) {
 					soft_data->zoom *= x;
 					soft_data->zoom = clamp(soft_data->zoom, 0.125f, 4.0f);
+					set_maybe_if_invalid(&game->tutorial.zoomed, game->render_time);
 				}
 			} break;
 
@@ -585,7 +589,7 @@ func void update()
 		}
 		soft_data->zoom = 1;
 
-		soft_data->currency = 50;
+		soft_data->currency = 60;
 
 		{
 			s_v2 pos = v2(
@@ -775,6 +779,7 @@ func void update()
 				movement.y += 1;
 			}
 			if(v2_length(movement) > 0) {
+				set_maybe_if_invalid(&game->tutorial.moved, game->render_time);
 				player->last_dir = movement;
 				player->walking = true;
 			}
@@ -1189,6 +1194,7 @@ func void render(float interp_dt, float delta)
 											if(soft_data->press_input.q) {
 												soft_data->press_input.q = false;
 												soft_data->machine_to_place = maybe(machine);
+												set_maybe_if_invalid(&game->tutorial.used_q, game->render_time);
 											}
 										}
 										int frame_index = roundfi(soft_data->machine_animation_time) % g_machine_data[machine].frame_count;
@@ -1290,6 +1296,10 @@ func void render(float interp_dt, float delta)
 				topleft.y = clamp(topleft.y, 0, c_max_tiles - 1);
 				bottomright.x = clamp(bottomright.x, 0, c_max_tiles - 1);
 				bottomright.y = clamp(bottomright.y, 0, c_max_tiles - 1);
+				if(bottomright.x - topleft.x >= g_machine_data[machine].size || bottomright.y - topleft.y >= g_machine_data[machine].size) {
+					set_maybe_if_invalid(&game->tutorial.used_shift, game->render_time);
+				}
+
 				{
 					s_v2i curr_index = topleft;
 					b8 placed_something = false;
@@ -1381,6 +1391,168 @@ func void render(float interp_dt, float delta)
 			do_basic_render_flush(view_projection, 0, view_inv);
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw fct end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		tutorial start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		{
+			breakable_block {
+				constexpr float font_size = 48;
+				constexpr float advance = font_size + 4;
+				float time_passed = 0;
+				if(game->tutorial.moved.valid) {
+					time_passed = game->render_time - game->tutorial.moved.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.4f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_keycap(scancode_to_char(SDL_SCANCODE_W), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4 + 0)), v2(font_size), alpha, 0);
+					draw_keycap(scancode_to_char(SDL_SCANCODE_A), pos + v2(advance * 1, sin_range(-10, 10, game->render_time * 4 + 1)), v2(font_size), alpha, 0);
+					draw_keycap(scancode_to_char(SDL_SCANCODE_S), pos + v2(advance * 2, sin_range(-10, 10, game->render_time * 4 + 2)), v2(font_size), alpha, 0);
+					draw_keycap(scancode_to_char(SDL_SCANCODE_D), pos + v2(advance * 3, sin_range(-10, 10, game->render_time * 4 + 3)), v2(font_size), alpha, 0);
+					draw_text(S("to move"), pos + v2(advance * 4, 0), font_size, make_ra(1, alpha), false, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.zoomed.valid) {
+					time_passed = game->render_time - game->tutorial.zoomed.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("Mouse wheel to zoom"), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.opened_inventory.valid) {
+					time_passed = game->render_time - game->tutorial.opened_inventory.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.4f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_keycap(scancode_to_char(SDL_SCANCODE_E), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4 + 0)), v2(font_size), alpha, 0);
+					draw_text(S("to open menu"), pos + v2(advance * 1, 0), font_size, make_ra(1, alpha), false, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.placed_collector.valid) {
+					time_passed = game->render_time - game->tutorial.placed_collector.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("Build a collector (it costs pure energy)\n     It will collect raw energy"), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.placed_processor.valid) {
+					time_passed = game->render_time - game->tutorial.placed_processor.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("            Build a processor\nIt will convert raw energy into pure energy"), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.started_a_research.valid) {
+					time_passed = game->render_time - game->tutorial.started_a_research.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("   Open the menu and start a research\n(You can pause it by clicking on it again)"), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.placed_researcher.valid) {
+					time_passed = game->render_time - game->tutorial.placed_researcher.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.89f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("                    Build a researcher\nIt will consume pure energy until the research completes\n      (Build more researchers to research faster)"), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.deleted_machine.valid) {
+					time_passed = game->render_time - game->tutorial.deleted_machine.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("Right click a machine to delete it\n (you get your pure energy back)"), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.used_q.valid) {
+					time_passed = game->render_time - game->tutorial.used_q.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.1f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_keycap(scancode_to_char(SDL_SCANCODE_Q), pos + v2(advance * 0, sin_range(-10, 10, game->render_time * 4 + 0)), v2(font_size), alpha, 0);
+					draw_text(S("on a machine to being placing that type of machine"), pos + v2(advance * 1, 0), font_size, make_ra(1, alpha), false, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.used_shift.valid) {
+					time_passed = game->render_time - game->tutorial.used_shift.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("When placing machines, hold shift\n to place in a rectangle pattern"), pos + v2(advance * 1, sin_range(-10, 10, game->render_time * 4 + 0)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				time_passed = 0;
+				if(game->tutorial.unlocked_chunk.valid) {
+					time_passed = game->render_time - game->tutorial.unlocked_chunk.value;
+				}
+				if(time_passed <= 1.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = 1.0f - powf(time_passed, 2.0f);
+					draw_text(S("Click on an unrevealed area to reveal it\n        (It costs pure energy)"), pos + v2(advance * 1, 0), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+
+				set_maybe_if_invalid(&game->tutorial.tutorial_end, game->render_time);
+
+				time_passed = 0;
+				if(game->tutorial.tutorial_end.valid) {
+					time_passed = game->render_time - game->tutorial.tutorial_end.value;
+				}
+				if(time_passed <= 10.0f) {
+					s_v2 pos = wxy(0.5f, 0.9f);
+					float alpha = ease_in_expo_advanced(time_passed, 0, 10, 1, 0);
+					draw_text(S("Your goal is to research a specific technology\n                Good luck!"), pos + v2(advance * 1, sin_range(-10, 10, game->render_time * 4 + 0)), font_size, make_ra(1, alpha), true, &game->font, zero, 0);
+					break;
+				}
+				// ------------------------------------------------------------------------
+			}
+			do_basic_render_flush(ortho, 0, view_inv);
+			do_basic_render_flush(ortho, 1, view_inv);
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		tutorial end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		inventory start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1476,6 +1648,7 @@ func void render(float interp_dt, float delta)
 							}
 							else {
 								soft_data->current_research = maybe(research);
+								set_maybe_if_invalid(&game->tutorial.started_a_research, game->render_time);
 							}
 							soft_data->open_inventory_timestamp = zero;
 						}
@@ -2562,12 +2735,13 @@ func void radix_sort_32(t* source, u32 count, F get_radix, s_linear_arena* arena
 func void draw_keycap(char c, s_v2 pos, s_v2 size, float alpha, int render_pass_index)
 {
 	pos += size * 0.5f;
-	draw_atlas_ex(game->atlas, pos, size, v2i(124, 42), make_ra(1, alpha), 0, zero, render_pass_index);
+	s_v2 keycap_size = size * 1.1f;
+	draw_atlas_ex(game->atlas, pos, keycap_size, v2i(2, 0), make_ra(1, alpha), 0, zero, render_pass_index);
 	s_len_str str = format_text("%c", to_upper_case(c));
-	pos.x -= size.x * 0.025f;
-	pos.y -= size.x * 0.05f;
+	pos.x -= keycap_size.x * 0.025f;
+	pos.y -= keycap_size.x * 0.05f;
 	s_v4 color = set_alpha(c_key_color, alpha);
-	draw_text(str, pos, size.x, color, true, &game->font, {.z = 1}, render_pass_index);
+	draw_text(str, pos, size.x, color, true, &game->font, zero, render_pass_index + 1);
 }
 
 func void add_multiplicative_light(s_v2 pos, float radius, s_v4 color, float smoothness)
@@ -2721,6 +2895,7 @@ func void unlock_chunk_v2i(s_v2i index)
 	assert(index.y < c_chunk_count);
 	assert(!is_chunk_unlocked_v2i(index));
 	game->soft_data.purchased_chunk_arr[index.y][index.x] = true;
+	set_maybe_if_invalid(&game->tutorial.unlocked_chunk, game->render_time);
 }
 
 func int get_chunk_unlock_cost(s_v2i index)
@@ -2794,6 +2969,15 @@ func void place_machine(s_v2i tile_index, e_machine machine)
 	assert(game->soft_data.machine_arr[tile_index.y][tile_index.x] == e_machine_none);
 	game->soft_data.machine_arr[tile_index.y][tile_index.x] = machine;
 	game->soft_data.machine_count_arr[machine] += 1;
+	if(machine == e_machine_collector_1) {
+		set_maybe_if_invalid(&game->tutorial.placed_collector, game->render_time);
+	}
+	else if(machine == e_machine_processor_1) {
+		set_maybe_if_invalid(&game->tutorial.placed_processor, game->render_time);
+	}
+	else if(machine == e_machine_research_1) {
+		set_maybe_if_invalid(&game->tutorial.placed_researcher, game->render_time);
+	}
 }
 
 func e_place_result can_we_place_machine(s_v2 player_pos, s_v2i chunk_index, s_v2i tile_index, e_machine machine, int currency)
@@ -2978,6 +3162,7 @@ func void remove_machine(s_v2i tile_index)
 	game->soft_data.machine_count_arr[machine] -= 1;
 	game->soft_data.machine_arr[tile_index.y][tile_index.x] = e_machine_none;
 	assert(game->soft_data.machine_count_arr[machine] >= 0);
+	set_maybe_if_invalid(&game->tutorial.deleted_machine, game->render_time);
 }
 
 func void sell_machine(s_v2i tile_index, e_machine machine)
