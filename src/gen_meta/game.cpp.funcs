@@ -65,7 +65,7 @@ func float get_wanted_game_speed(float interp_dt);
 func s_active_sound* find_playing_sound(e_sound id);
 func void do_lerpable_snap(s_lerpable* lerpable, float dt, float max_diff);
 func float get_player_speed();
-func void do_basic_render_flush(s_m4 ortho, int render_pass_index);
+func void do_basic_render_flush(s_m4 ortho, int render_pass_index, s_m4 view_inv);
 func s_rect get_chunk_rect(s_v2i index);
 func b8 is_chunk_unlocked(int x, int y);
 func b8 is_chunk_unlocked_v2i(s_v2i index);

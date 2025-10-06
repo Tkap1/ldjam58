@@ -24,6 +24,8 @@ layout(std140) uniform ublock
 	s_v3 player_pos;
 	float pad0;
 	s_v2 mouse;
+	s_v2 camera_topleft;
+	s_v2 camera_bottomright;
 	float pad1;
 	float pad2;
 };

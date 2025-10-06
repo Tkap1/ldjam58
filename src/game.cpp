@@ -898,7 +898,7 @@ func void render(float interp_dt, float delta)
 		}
 
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
+			s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_yes_write;
@@ -929,7 +929,7 @@ func void render(float interp_dt, float delta)
 		draw_text(S("www.twitch.tv/Tkap1"), wxy(0.5f, 0.3f), 32, make_rrr(0.6f), true, &game->font, zero, 0);
 
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
+			s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_yes_write;
@@ -963,7 +963,7 @@ func void render(float interp_dt, float delta)
 		}
 
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
+			s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_yes_write;
@@ -972,7 +972,7 @@ func void render(float interp_dt, float delta)
 	}
 
 	if(should_do_leaderboard_menu) {
-		s_render_flush_data data = make_render_flush_data(zero, zero);
+		s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 		data.projection = ortho;
 		data.blend_mode = e_blend_mode_normal;
 		data.depth_mode = e_depth_mode_no_read_yes_write;
@@ -1009,7 +1009,7 @@ func void render(float interp_dt, float delta)
 		}
 
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
+			s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_yes_write;
@@ -1109,7 +1109,7 @@ func void render(float interp_dt, float delta)
 			draw_rect_topleft(state->name.cursor_visual_pos - v2(0.0f, extra_height / 2), cursor_size, color, 0);
 		}
 
-		s_render_flush_data data = make_render_flush_data(zero, zero);
+		s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 		data.projection = ortho;
 		data.blend_mode = e_blend_mode_normal;
 		data.depth_mode = e_depth_mode_no_read_no_write;
@@ -1119,6 +1119,15 @@ func void render(float interp_dt, float delta)
 	if(do_game) {
 
 		b8 do_game_ui = true;
+
+		{
+			s_instance_data data = zero;
+			data.model = m4_translate(v3(c_world_center, 0));
+			data.model = m4_multiply(data.model, m4_scale(v3(c_world_size, 1)));
+			data.color = make_rrr(1);
+			add_to_render_group(data, e_shader_ground, e_texture_white, e_mesh_quad, 0);
+			do_basic_render_flush(ortho, 0, view_inv);
+		}
 
 		if(soft_data->press_input.q && soft_data->machine_to_place.valid) {
 			soft_data->machine_to_place = zero;
@@ -1336,9 +1345,9 @@ func void render(float interp_dt, float delta)
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		placing end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 		}
 
-		do_basic_render_flush(view_projection, 0);
-		do_basic_render_flush(view_projection, 1);
-		do_basic_render_flush(view_projection, 2);
+		do_basic_render_flush(view_projection, 0, view_inv);
+		do_basic_render_flush(view_projection, 1, view_inv);
+		do_basic_render_flush(view_projection, 2, view_inv);
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
@@ -1358,7 +1367,7 @@ func void render(float interp_dt, float delta)
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-		do_basic_render_flush(view_projection, 0);
+		do_basic_render_flush(view_projection, 0, view_inv);
 
 		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		draw fct start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		{
@@ -1375,7 +1384,7 @@ func void render(float interp_dt, float delta)
 					entity_manager_remove(entity_arr, e_entity_fct, fct_i);
 				}
 			}
-			do_basic_render_flush(view_projection, 0);
+			do_basic_render_flush(view_projection, 0, view_inv);
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		draw fct end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1468,7 +1477,12 @@ func void render(float interp_dt, float delta)
 						draw_atlas_topleft(game->atlas, pos, rect_size, v2i(6, 0), color, 1);
 
 						if(hovered && is_key_pressed(c_left_button, true)) {
-							soft_data->current_research = maybe(research);
+							if(soft_data->current_research.valid && soft_data->current_research.value == research) {
+								soft_data->current_research = zero;
+							}
+							else {
+								soft_data->current_research = maybe(research);
+							}
 							soft_data->open_inventory_timestamp = zero;
 						}
 						column += 1;
@@ -1494,9 +1508,9 @@ func void render(float interp_dt, float delta)
 					}
 				}
 
-				do_basic_render_flush(ortho, 0);
-				do_basic_render_flush(ortho, 1);
-				do_basic_render_flush(ortho, 2);
+				do_basic_render_flush(ortho, 0, view_inv);
+				do_basic_render_flush(ortho, 1, view_inv);
+				do_basic_render_flush(ortho, 2, view_inv);
 			}
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		inventory end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1551,7 +1565,7 @@ func void render(float interp_dt, float delta)
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		research progress bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 			{
-				s_render_flush_data data = make_render_flush_data(zero, zero);
+				s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 				data.projection = ortho;
 				data.blend_mode = e_blend_mode_normal;
 				data.depth_mode = e_depth_mode_no_read_no_write;
@@ -1578,7 +1592,7 @@ func void render(float interp_dt, float delta)
 				draw_rect_topleft(rect_pos, size, make_ra(0.1f, 0.95f), 0);
 				draw_text(game->tooltip, text_pos, font_size, make_rrr(1), false, &game->font, zero, 0);
 				{
-					s_render_flush_data data = make_render_flush_data(zero, zero);
+					s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 					data.projection = ortho;
 					data.blend_mode = e_blend_mode_normal;
 					data.depth_mode = e_depth_mode_no_read_no_write;
@@ -1626,7 +1640,7 @@ func void render(float interp_dt, float delta)
 				}
 			}
 
-			do_basic_render_flush(ortho, 0);
+			do_basic_render_flush(ortho, 0, view_inv);
 		}
 		#endif
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		cheat menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1642,7 +1656,7 @@ func void render(float interp_dt, float delta)
 		draw_text(S("Press R to try again"), wxy(0.5f, 0.55f), sin_range(48, 64, game->render_time * 8), make_rrr(1), true, &game->font, zero, 0);
 
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
+			s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_no_write;
@@ -1667,7 +1681,7 @@ func void render(float interp_dt, float delta)
 		}
 
 		{
-			s_render_flush_data data = make_render_flush_data(zero, zero);
+			s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 			data.projection = ortho;
 			data.blend_mode = e_blend_mode_normal;
 			data.depth_mode = e_depth_mode_no_read_no_write;
@@ -1825,6 +1839,13 @@ func void render_flush(s_render_flush_data data, b8 reset_render_count, int rend
 		uniform_data.player_pos = data.player_pos;
 		uniform_data.window_size.x = (float)g_platform_data->window_size.x;
 		uniform_data.window_size.y = (float)g_platform_data->window_size.y;
+
+		{
+			s_rect r = get_camera_bounds(data.view_inv);
+			uniform_data.camera_topleft = r.pos;
+			uniform_data.camera_bottomright = r.pos + r.size;
+		}
+
 		gl(glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(s_uniform_data), &uniform_data));
 	}
 
@@ -2643,9 +2664,9 @@ func float get_player_speed()
 	return result;
 }
 
-func void do_basic_render_flush(s_m4 ortho, int render_pass_index)
+func void do_basic_render_flush(s_m4 ortho, int render_pass_index, s_m4 view_inv)
 {
-	s_render_flush_data data = make_render_flush_data(zero, zero);
+	s_render_flush_data data = make_render_flush_data(zero, zero, view_inv);
 	data.projection = ortho;
 	data.blend_mode = e_blend_mode_normal;
 	data.depth_mode = e_depth_mode_no_read_no_write;

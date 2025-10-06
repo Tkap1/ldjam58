@@ -2,7 +2,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wbraced-scalar-init"
 #endif
-func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos);
+func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos, s_m4 view_inv);
 func s_mesh make_mesh_from_vertices(s_vertex* vertex_arr, int vertex_count);
 func s_ply_mesh parse_ply_mesh(char* path, s_linear_arena* arena);
 func s_mesh make_mesh_from_ply_file(char* file, s_linear_arena* arena);

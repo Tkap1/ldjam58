@@ -1,10 +1,11 @@
 
 
 
-func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos)
+func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos, s_m4 view_inv)
 {
 	s_render_flush_data result = zero;
 	result.view = m4_identity();
+	result.view_inv = view_inv;
 	result.projection = m4_identity();
 	result.light_view = m4_identity();
 	result.light_projection = m4_identity();
