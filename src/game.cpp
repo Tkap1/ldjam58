@@ -971,7 +971,7 @@ func void render(float interp_dt, float delta)
 	if(should_do_win_leaderboard_menu) {
 
 		{
-			s_time_format data = update_count_to_time_format(game->update_count_at_win_time);
+			s_time_format data = update_count_to_time_format(game->update_count_at_win_time, false);
 			s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
 			draw_text(text, c_world_center * v2(1.0f, 0.2f), 64, make_rrr(1), true, &game->font, zero, 0);
 
@@ -1142,7 +1142,7 @@ func void render(float interp_dt, float delta)
 
 	if(do_game) {
 
-		b8 do_game_ui = false;
+		b8 do_game_ui = true;
 
 		draw_ground(ortho, view_inv);
 
@@ -1638,7 +1638,7 @@ func void render(float interp_dt, float delta)
 			s_container container = make_down_center_x_container(rect, button_size, 10);
 
 			{
-				s_time_format data = update_count_to_time_format(game->hard_data.update_count);
+				s_time_format data = update_count_to_time_format(game->hard_data.update_count, false);
 				s_len_str text = format_text("%02i:%02i.%03i", data.minutes, data.seconds, data.milliseconds);
 				if(!game->hide_timer) {
 					draw_text(text, container_get_pos_and_advance(&container), 48, make_rrr(1), false, &game->font, zero, 0);
@@ -2475,7 +2475,7 @@ func void do_leaderboard()
 		}
 		for(int entry_i = start; entry_i < end; entry_i += 1) {
 			s_leaderboard_entry entry = game->leaderboard_arr[entry_i];
-			s_time_format data = update_count_to_time_format(entry.time);
+			s_time_format data = update_count_to_time_format(entry.time, false);
 			s_v4 color = make_rrr(0.8f);
 			if(builder_equals(&game->leaderboard_public_uid, &entry.internal_name)) {
 				color = hex_to_rgb(0xD3A861);

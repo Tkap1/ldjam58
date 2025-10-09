@@ -690,13 +690,15 @@ func s_m4 fullscreen_m4()
 	return result;
 }
 
-func s_time_format update_time_to_time_format(float update_time)
+func s_time_format update_time_to_time_format(float update_time, b8 handle_hours)
 {
 	s_time_format result = zero;
 	float milliseconds = update_time * 1000;
 
-	result.hours = floorfi(milliseconds / 1000 / 60 / 60);
-	milliseconds -= result.hours * 1000 * 60 * 60;
+	if(handle_hours) {
+		result.hours = floorfi(milliseconds / 1000 / 60 / 60);
+		milliseconds -= result.hours * 1000 * 60 * 60;
+	}
 
 	result.minutes = floorfi(milliseconds / 1000 / 60);
 	milliseconds -= result.minutes * 1000 * 60;
@@ -709,10 +711,10 @@ func s_time_format update_time_to_time_format(float update_time)
 	return result;
 }
 
-func s_time_format update_count_to_time_format(int update_count)
+func s_time_format update_count_to_time_format(int update_count, b8 handle_hours)
 {
 	float update_time = update_count * (float)c_update_delay;
-	s_time_format result = update_time_to_time_format(update_time);
+	s_time_format result = update_time_to_time_format(update_time, handle_hours);
 	return result;
 }
 
