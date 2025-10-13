@@ -111,7 +111,6 @@ m_dll_export void init(s_platform_data* platform_data)
 	game = (s_game*)platform_data->memory;
 	unpoison_memory(game, sizeof(s_game));
 	game->speed_index = 5;
-	// game->rng = make_rng(1234);
 	game->rng = make_rng(SDL_GetPerformanceCounter());
 	game->reload_shaders = true;
 	game->speed = 0;
@@ -214,33 +213,12 @@ m_dll_export void init(s_platform_data* platform_data)
 		gl(glGenBuffers(1, &mesh->instance_vbo.id));
 		gl(glBindBuffer(GL_ARRAY_BUFFER, mesh->instance_vbo.id));
 
-		u8* offset = 0;
-		constexpr int stride = sizeof(float) * 9;
-		int attrib_index = 0;
-
-		gl(glVertexAttribPointer(attrib_index, 2, GL_FLOAT, GL_FALSE, stride, offset)); // line start
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 2;
-
-		gl(glVertexAttribPointer(attrib_index, 2, GL_FLOAT, GL_FALSE, stride, offset)); // line end
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 2;
-
-		gl(glVertexAttribPointer(attrib_index, 1, GL_FLOAT, GL_FALSE, stride, offset)); // line width
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 1;
-
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // instance color
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
+		s_gl_attrib_manager attrib_manager = zero;
+		attrib_manager_add_float_divisor(&attrib_manager, 2); // line start
+		attrib_manager_add_float_divisor(&attrib_manager, 2); // line end
+		attrib_manager_add_float_divisor(&attrib_manager, 1); // line width
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // color
+		attrib_manager_finish(&attrib_manager);
 	}
 
 	for(int i = 0; i < e_sound_count; i += 1) {
