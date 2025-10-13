@@ -23,33 +23,17 @@ func s_mesh make_mesh_from_vertices(s_vertex* vertex_arr, int vertex_count)
 	gl(glGenVertexArrays(1, &result.vao));
 	gl(glBindVertexArray(result.vao));
 
-	int attrib_index = 0;
+	s_gl_attrib_manager attrib_manager = zero;
+
 	{
 		gl(glGenBuffers(1, &result.vertex_vbo));
 		gl(glBindBuffer(GL_ARRAY_BUFFER, result.vertex_vbo));
 
-		u8* offset = 0;
-		constexpr int stride = sizeof(float) * 12;
-
-		gl(glVertexAttribPointer(attrib_index, 3, GL_FLOAT, GL_FALSE, stride, offset)); // pos
-		gl(glEnableVertexAttribArray(attrib_index));
-		attrib_index += 1;
-		offset += sizeof(float) * 3;
-
-		gl(glVertexAttribPointer(attrib_index, 3, GL_FLOAT, GL_FALSE, stride, offset)); // normal
-		gl(glEnableVertexAttribArray(attrib_index));
-		attrib_index += 1;
-		offset += sizeof(float) * 3;
-
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // rgba
-		gl(glEnableVertexAttribArray(attrib_index));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
-
-		gl(glVertexAttribPointer(attrib_index, 2, GL_FLOAT, GL_FALSE, stride, offset)); // uv
-		gl(glEnableVertexAttribArray(attrib_index));
-		attrib_index += 1;
-		offset += sizeof(float) * 2;
+		attrib_manager_add_float(&attrib_manager, 3); // pos
+		attrib_manager_add_float(&attrib_manager, 3); // normal
+		attrib_manager_add_float(&attrib_manager, 4); // rgba
+		attrib_manager_add_float(&attrib_manager, 2); // uv
+		attrib_manager_finish(&attrib_manager);
 
 		result.vertex_count = vertex_count;
 		gl(glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex) * vertex_count, vertex_arr, GL_STATIC_DRAW));
@@ -59,62 +43,57 @@ func s_mesh make_mesh_from_vertices(s_vertex* vertex_arr, int vertex_count)
 		gl(glGenBuffers(1, &result.instance_vbo.id));
 		gl(glBindBuffer(GL_ARRAY_BUFFER, result.instance_vbo.id));
 
-		u8* offset = 0;
-		constexpr int stride = sizeof(float) * 29;
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // instance color
+		attrib_manager_add_float_divisor(&attrib_manager, 2); // uv min
+		attrib_manager_add_float_divisor(&attrib_manager, 2); // uv max
+		attrib_manager_add_float_divisor(&attrib_manager, 1); // mix weight
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // mix color
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // model matrix
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // model matrix
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // model matrix
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // model matrix
+		attrib_manager_finish(&attrib_manager);
+	}
+	return result;
+}
 
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // instance color
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
+func s_mesh make_plane_mesh()
+{
+	s_mesh result = zero;
+	gl(glGenVertexArrays(1, &result.vao));
+	gl(glBindVertexArray(result.vao));
 
-		gl(glVertexAttribPointer(attrib_index, 2, GL_FLOAT, GL_FALSE, stride, offset)); // uv min
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 2;
+	s_gl_attrib_manager attrib_manager = zero;
+	constexpr int vertex_count = 6;
+	result.vertex_count = vertex_count;
 
-		gl(glVertexAttribPointer(attrib_index, 2, GL_FLOAT, GL_FALSE, stride, offset)); // uv max
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 2;
+	{
+		gl(glGenBuffers(1, &result.vertex_vbo));
+		gl(glBindBuffer(GL_ARRAY_BUFFER, result.vertex_vbo));
 
-		gl(glVertexAttribPointer(attrib_index, 1, GL_FLOAT, GL_FALSE, stride, offset)); // mix weight
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 1;
+		s_v2 uv_arr[6] = {
+			v2(0, 1), v2(1, 1), v2(1, 0),
+			v2(0, 1), v2(1, 0), v2(0, 0),
+		};
 
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // mix color
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
+		attrib_manager_add_float(&attrib_manager, 2); // uv
+		attrib_manager_finish(&attrib_manager);
 
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // mat4_0
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
+		gl(glBufferData(GL_ARRAY_BUFFER, sizeof(uv_arr) * vertex_count, uv_arr, GL_STATIC_DRAW));
+	}
 
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // mat4_1
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
 
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // mat4_2
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
+	{
+		gl(glGenBuffers(1, &result.instance_vbo.id));
+		gl(glBindBuffer(GL_ARRAY_BUFFER, result.instance_vbo.id));
 
-		gl(glVertexAttribPointer(attrib_index, 4, GL_FLOAT, GL_FALSE, stride, offset)); // mat4_3
-		gl(glEnableVertexAttribArray(attrib_index));
-		gl(glVertexAttribDivisor(attrib_index, 1));
-		attrib_index += 1;
-		offset += sizeof(float) * 4;
+		// @Note(tkap, 09/10/2025): From the front
+		attrib_manager_add_float_divisor(&attrib_manager, 3); // top left
+		attrib_manager_add_float_divisor(&attrib_manager, 3); // top right
+		attrib_manager_add_float_divisor(&attrib_manager, 3); // bottom left
+		attrib_manager_add_float_divisor(&attrib_manager, 3); // bottom right
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // color
+		attrib_manager_finish(&attrib_manager);
 	}
 	return result;
 }
@@ -1230,4 +1209,41 @@ func void do_basic_options(s_container* container, s_v2 button_size)
 		do_bool_button_ex(text, container_get_pos_and_advance(container), button_size, false, &game->hide_timer);
 	}
 
+}
+
+func void attrib_manager_add_float(s_gl_attrib_manager* attrib_manager, int count)
+{
+	assert(count > 0);
+	s_gl_attrib attrib = zero;
+	attrib.count = count;
+	attrib_manager->attrib_arr.add(attrib);
+}
+
+func void attrib_manager_add_float_divisor(s_gl_attrib_manager* attrib_manager, int count)
+{
+	assert(count > 0);
+	s_gl_attrib attrib = zero;
+	attrib.count = count;
+	attrib.do_divisor = true;
+	attrib_manager->attrib_arr.add(attrib);
+}
+
+func void attrib_manager_finish(s_gl_attrib_manager* attrib_manager)
+{
+	assert(attrib_manager->attrib_arr.count > 0);
+	u32 stride = 0;
+	foreach_val(attrib_i, attrib, attrib_manager->attrib_arr) {
+		stride += sizeof(float) * attrib.count;
+	}
+	u8* offset = 0;
+	foreach_val(attrib_i, attrib, attrib_manager->attrib_arr) {
+		gl(glVertexAttribPointer(attrib_manager->index, attrib.count, GL_FLOAT, GL_FALSE, stride, offset));
+		gl(glEnableVertexAttribArray(attrib_manager->index));
+		if(attrib.do_divisor) {
+			gl(glVertexAttribDivisor(attrib_manager->index, 1));
+		}
+		offset += sizeof(float) * attrib.count;
+		attrib_manager->index += 1;
+	}
+	attrib_manager->attrib_arr.count = 0;
 }

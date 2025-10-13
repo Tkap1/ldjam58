@@ -198,6 +198,8 @@ m_dll_export void init(s_platform_data* platform_data)
 		game->mesh_arr[e_mesh_quad] = make_mesh_from_vertices(vertex_arr, array_count(vertex_arr));
 	}
 
+	game->mesh_arr[e_mesh_plane] = make_plane_mesh();
+
 	{
 		game->mesh_arr[e_mesh_cube] = make_mesh_from_obj_file("assets/cube.obj", &game->render_frame_arena);
 		game->mesh_arr[e_mesh_sphere] = make_mesh_from_obj_file("assets/sphere.obj", &game->render_frame_arena);
@@ -662,13 +664,13 @@ func void update()
 	if(game->do_soft_reset) {
 	}
 
-	b8 do_game = false;
+	b8 should_do_game = false;
 	switch(state0) {
 		case e_game_state0_play: {
 			e_game_state1 state1 = (e_game_state1)get_state(&hard_data->state1);
 			switch(state1) {
 				xcase e_game_state1_default: {
-					do_game = true;
+					should_do_game = true;
 				}
 				xcase e_game_state1_defeat: {
 				}
@@ -689,7 +691,7 @@ func void update()
 		return;
 	}
 
-	if(do_game) {
+	if(should_do_game) {
 		game->update_time += (float)c_update_delay;
 		hard_data->update_count += 1;
 		soft_data->update_count += 1;
@@ -874,7 +876,7 @@ func void render(float interp_dt, float delta)
 
 	e_game_state0 state0 = (e_game_state0)get_state(&game->state0);
 
-	b8 do_game = false;
+	b8 should_do_game = false;
 	b8 do_defeat = false;
 
 	float wanted_speed = get_wanted_game_speed(interp_dt);
@@ -1048,10 +1050,10 @@ func void render(float interp_dt, float delta)
 		e_game_state1 state1 = (e_game_state1)get_state(&hard_data->state1);
 		switch(state1) {
 			xcase e_game_state1_default: {
-				do_game = true;
+				should_do_game = true;
 			}
 			xcase e_game_state1_defeat: {
-				do_game = true;
+				should_do_game = true;
 				do_defeat = true;
 				game->music_speed.target = 0.5f;
 			}
@@ -1140,7 +1142,7 @@ func void render(float interp_dt, float delta)
 		render_flush(data, true, 0);
 	}
 
-	if(do_game) {
+	if(should_do_game) {
 
 		b8 do_game_ui = true;
 
@@ -2008,6 +2010,27 @@ func void draw_rect(s_v2 pos, s_v2 size, s_v4 color, int render_pass_index)
 	data.color = color;
 
 	add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad, render_pass_index);
+}
+
+func void draw_rect_3d(s_v3 pos, s_v2 size, s_v4 color, int render_pass_index)
+{
+	s_instance_data data = zero;
+	data.model = m4_translate(pos);
+	data.model = m4_multiply(data.model, m4_scale(v3(size, 1)));
+	data.color = color;
+
+	add_to_render_group(data, e_shader_flat, e_texture_white, e_mesh_quad, render_pass_index);
+}
+
+func void draw_plane(s_v3 topleft, s_v3 topright, s_v3 bottomleft, s_v3 bottomright, s_v4 color, int render_pass_index)
+{
+	s_plane_instance data = zero;
+	data.topleft = topleft;
+	data.topright = topright;
+	data.bottomleft = bottomleft;
+	data.bottomright = bottomright;
+	data.color = color;
+	add_to_render_group(data, e_shader_plane, e_texture_white, e_mesh_plane, render_pass_index);
 }
 
 func void draw_rect_topleft(s_v2 pos, s_v2 size, s_v4 color, int render_pass_index)

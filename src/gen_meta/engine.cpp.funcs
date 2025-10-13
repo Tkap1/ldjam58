@@ -4,6 +4,7 @@
 #endif
 func s_render_flush_data make_render_flush_data(s_v3 cam_pos, s_v3 player_pos, s_m4 view_inv);
 func s_mesh make_mesh_from_vertices(s_vertex* vertex_arr, int vertex_count);
+func s_mesh make_plane_mesh();
 func s_ply_mesh parse_ply_mesh(char* path, s_linear_arena* arena);
 func s_mesh make_mesh_from_ply_file(char* file, s_linear_arena* arena);
 func s_mesh make_mesh_from_obj_file(char* file, s_linear_arena* arena);
@@ -55,6 +56,9 @@ func char scancode_to_char(SDL_Scancode scancode);
 func b8 cheat_key(int key);
 func void pre_render(float delta);
 func void do_basic_options(s_container* container, s_v2 button_size);
+func void attrib_manager_add_float(s_gl_attrib_manager* attrib_manager, int count);
+func void attrib_manager_add_float_divisor(s_gl_attrib_manager* attrib_manager, int count);
+func void attrib_manager_finish(s_gl_attrib_manager* attrib_manager);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

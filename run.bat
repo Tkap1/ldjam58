@@ -1,3 +1,3 @@
 @echo off
 
-start "main" main.exe %*
+start "game_cmd" main.exe %*

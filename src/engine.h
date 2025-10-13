@@ -7,6 +7,7 @@ enum e_mesh
 	e_mesh_cube,
 	e_mesh_sphere,
 	e_mesh_line,
+	e_mesh_plane,
 	e_mesh_count,
 };
 
@@ -23,6 +24,8 @@ enum e_shader
 	e_shader_flat_remove_black,
 	e_shader_lightning,
 	e_shader_ground,
+	e_shader_plane,
+	e_shader_billboard,
 	e_shader_count,
 };
 
@@ -38,6 +41,8 @@ global constexpr char* c_shader_path_arr[e_shader_count] = {
 	"shaders/flat_remove_black.shader",
 	"shaders/lightning.shader",
 	"shaders/ground.shader",
+	"shaders/plane.shader",
+	"shaders/billboard.shader",
 };
 
 
@@ -80,6 +85,17 @@ struct s_instance_data1
 	s_v2 start;
 	s_v2 end;
 	float width;
+	s_v4 color;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct s_plane_instance
+{
+	s_v3 topleft;
+	s_v3 topright;
+	s_v3 bottomleft;
+	s_v3 bottomright;
 	s_v4 color;
 };
 #pragma pack(pop)
@@ -265,6 +281,18 @@ struct s_vbo
 {
 	u32 id;
 	int max_elements;
+};
+
+struct s_gl_attrib
+{
+	b8 do_divisor;
+	int count;
+};
+
+struct s_gl_attrib_manager
+{
+	int index;
+	s_list<s_gl_attrib, 16> attrib_arr;
 };
 
 struct s_mesh
