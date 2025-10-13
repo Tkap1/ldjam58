@@ -59,6 +59,7 @@ func void do_basic_options(s_container* container, s_v2 button_size);
 func void attrib_manager_add_float(s_gl_attrib_manager* attrib_manager, int count);
 func void attrib_manager_add_float_divisor(s_gl_attrib_manager* attrib_manager, int count);
 func void attrib_manager_finish(s_gl_attrib_manager* attrib_manager);
+func void engine_init(s_platform_data* platform_data);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

@@ -1247,3 +1247,142 @@ func void attrib_manager_finish(s_gl_attrib_manager* attrib_manager)
 	}
 	attrib_manager->attrib_arr.count = 0;
 }
+
+func void engine_init(s_platform_data* platform_data)
+{
+	SDL_StartTextInput();
+
+	u8* cursor = platform_data->memory + sizeof(s_game);
+	{
+		game->arena = make_arena_from_memory(cursor, 10 * c_mb);
+		cursor += 10 * c_mb;
+	}
+	{
+		game->update_frame_arena = make_arena_from_memory(cursor, 10 * c_mb);
+		cursor += 10 * c_mb;
+	}
+	{
+		game->render_frame_arena = make_arena_from_memory(cursor, 400 * c_mb);
+		cursor += 400 * c_mb;
+	}
+	{
+		game->circular_arena = make_circular_arena_from_memory(cursor, 10 * c_mb);
+		cursor += 10 * c_mb;
+	}
+
+	platform_data->cycle_frequency = SDL_GetPerformanceFrequency();
+	platform_data->start_cycles = SDL_GetPerformanceCounter();
+
+	platform_data->window_size.x = (int)c_world_size.x;
+	platform_data->window_size.y = (int)c_world_size.y;
+
+	g_platform_data->window = SDL_CreateWindow(
+		c_game_name.str, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		(int)c_world_size.x, (int)c_world_size.y, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+	);
+	SDL_SetWindowPosition(g_platform_data->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	SDL_ShowWindow(g_platform_data->window);
+
+	#if defined(__EMSCRIPTEN__)
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+	#else
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	#endif
+
+	g_platform_data->gl_context = SDL_GL_CreateContext(g_platform_data->window);
+	SDL_GL_SetSwapInterval(1);
+
+	#define X(type, name) name = (type)SDL_GL_GetProcAddress(#name); assert(name);
+		m_gl_funcs
+	#undef X
+
+	{
+		gl(glGenBuffers(1, &game->ubo));
+		gl(glBindBuffer(GL_UNIFORM_BUFFER, game->ubo));
+		gl(glBufferData(GL_UNIFORM_BUFFER, sizeof(s_uniform_data), NULL, GL_DYNAMIC_DRAW));
+		gl(glBindBufferBase(GL_UNIFORM_BUFFER, 0, game->ubo));
+	}
+
+	{
+		constexpr float c_size = 0.5f;
+		s_vertex vertex_arr[] = {
+			{v3(-c_size, -c_size, 0), v3(0, -1, 0), make_rrr(1), v2(0, 1)},
+			{v3(c_size, -c_size, 0), v3(0, -1, 0), make_rrr(1), v2(1, 1)},
+			{v3(c_size, c_size, 0), v3(0, -1, 0), make_rrr(1), v2(1, 0)},
+			{v3(-c_size, -c_size, 0), v3(0, -1, 0), make_rrr(1), v2(0, 1)},
+			{v3(c_size, c_size, 0), v3(0, -1, 0), make_rrr(1), v2(1, 0)},
+			{v3(-c_size, c_size, 0), v3(0, -1, 0), make_rrr(1), v2(0, 0)},
+		};
+		game->mesh_arr[e_mesh_quad] = make_mesh_from_vertices(vertex_arr, array_count(vertex_arr));
+	}
+
+	game->mesh_arr[e_mesh_plane] = make_plane_mesh();
+
+	{
+		game->mesh_arr[e_mesh_cube] = make_mesh_from_obj_file("assets/cube.obj", &game->render_frame_arena);
+		game->mesh_arr[e_mesh_sphere] = make_mesh_from_obj_file("assets/sphere.obj", &game->render_frame_arena);
+	}
+
+	{
+		s_mesh* mesh = &game->mesh_arr[e_mesh_line];
+		mesh->vertex_count = 6;
+		gl(glGenVertexArrays(1, &mesh->vao));
+		gl(glBindVertexArray(mesh->vao));
+
+		gl(glGenBuffers(1, &mesh->instance_vbo.id));
+		gl(glBindBuffer(GL_ARRAY_BUFFER, mesh->instance_vbo.id));
+
+		s_gl_attrib_manager attrib_manager = zero;
+		attrib_manager_add_float_divisor(&attrib_manager, 2); // line start
+		attrib_manager_add_float_divisor(&attrib_manager, 2); // line end
+		attrib_manager_add_float_divisor(&attrib_manager, 1); // line width
+		attrib_manager_add_float_divisor(&attrib_manager, 4); // color
+		attrib_manager_finish(&attrib_manager);
+	}
+
+	for(int i = 0; i < e_sound_count; i += 1) {
+		platform_data->sound_arr[i] = platform_data->load_sound_from_file(c_sound_data_arr[i].path);
+	}
+
+	for(int i = 0; i < e_texture_count; i += 1) {
+		char* path = c_texture_path_arr[i];
+		if(strlen(path) > 0) {
+			u32 filter = GL_NEAREST;
+			if(i == e_texture_superku) {
+				filter = GL_LINEAR;
+			}
+			game->texture_arr[i] = load_texture_from_file(path, filter);
+		}
+	}
+
+	game->font = load_font_from_file("assets/Inconsolata-Regular.ttf", 128, &game->render_frame_arena);
+
+	// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		atlas start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+	{
+		game->atlas.texture = e_texture_atlas;
+		game->atlas.texture_size = v2i(256, 256);
+		game->atlas.sprite_size = v2i(16, 16);
+	}
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		atlas end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+	{
+		u32* texture = &game->texture_arr[e_texture_light].id;
+		game->light_fbo.size.x = (int)c_world_size.x;
+		game->light_fbo.size.y = (int)c_world_size.y;
+		gl(glGenFramebuffers(1, &game->light_fbo.id));
+		bind_framebuffer(game->light_fbo.id);
+		gl(glGenTextures(1, texture));
+		gl(glBindTexture(GL_TEXTURE_2D, *texture));
+		gl(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game->light_fbo.size.x, game->light_fbo.size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL));
+		gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+		gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+		gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture, 0));
+		assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+		bind_framebuffer(0);
+	}
+
+}
